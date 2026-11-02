@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Site Selection Desk</title>
+<meta name="description" content="Corporate Finance, Unit 5. Decide which restaurant sites to build using net present value.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;
+  --bg:#F7F5F0;--surface:#FFFFFF;--panel:#EEEBE3;--line:#D9D4C8;--line-strong:#8A8475;
+  --ink:#1B211D;--muted:#5C625D;--brand:#1C6B4A;--brand-ink:#FFFFFF;--brand-tint:#E2F0E8;
+  --ok:#1C7340;--ok-tint:#E0F2E5;--bad:#A8261E;--bad-tint:#FBE7E4;--hint:#3B5469;--hint-tint:#E5ECF2;--focus:#1B211D;
+  --serif:'Libre Caslon Text','Iowan Old Style',Georgia,serif;--display:'Libre Caslon Display','Libre Caslon Text',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#121815;--surface:#18201C;--panel:#1F2924;--line:#2F3B35;--line-strong:#71807A;
+  --ink:#E9EEEA;--muted:#AEBAB3;--brand:#7DD49A;--brand-ink:#0F1512;--brand-tint:#1B3326;
+  --ok:#7DD49A;--ok-tint:#173324;--bad:#FF8D84;--bad-tint:#42201E;--hint:#A8BCCE;--hint-tint:#1C2A36;--focus:#E9EEEA;}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:18px/1.6 var(--serif);font-variant-numeric:lining-nums tabular-nums}
+a{color:var(--ink);text-underline-offset:.2em}
+:focus-visible{outline:2.5px solid var(--focus);outline-offset:3px;border-radius:3px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px;top:0;background:var(--brand);color:var(--brand-ink);padding:.6rem 1rem;z-index:10}
+.skip:focus{left:0}
+header.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar-in{max-width:760px;margin:0 auto;padding:.6rem 1.1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.brand{font-style:italic;color:var(--muted);font-size:16px;margin-right:auto}
+.brand b{font-style:normal;color:var(--brand);font-weight:700}
+.tiles{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.tiles li{width:26px;height:26px;border-radius:5px;border:1.5px solid var(--line-strong);display:grid;place-items:center;font:500 12px var(--mono);color:var(--muted)}
+.tiles li.done{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.tiles li.here{outline:2px solid var(--ink);outline-offset:2px}
+.tiles button{all:unset;cursor:pointer;width:100%;height:100%;display:grid;place-items:center}
+.btn-quiet{font:15px var(--serif);background:none;border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:.3rem .7rem;cursor:pointer}
+main{max-width:760px;margin:0 auto;padding:1.5rem 1.1rem 6rem}
+.kicker{font-style:italic;color:var(--muted);margin:2.2rem 0 .6rem;font-size:17px}
+h1{font:400 clamp(40px,7vw,68px)/1 var(--display);letter-spacing:-.01em;margin:0 0 1rem}
+.dek{font-style:italic;font-size:21px;line-height:1.45;color:var(--muted);max-width:32em;margin:0 0 2rem}
+h2{font:400 30px/1.15 var(--display);margin:0 0 .8rem}
+.howto{background:var(--panel);border-radius:8px;padding:1rem 1.25rem;margin:0 0 2rem}
+.howto p{margin:.2rem 0}
+form.start{display:grid;gap:1rem;max-width:30rem}
+label{display:block;font-weight:700;font-size:16px;margin-bottom:.25rem}
+.field-help{font-size:15px;color:var(--muted);margin:.25rem 0 0}
+input[type=text],input[type=email]{width:100%;font:18px var(--serif);padding:.55rem .7rem;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)}
+input.money{font:500 19px var(--mono);width:14rem;padding:.5rem .7rem;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)}
+.btn{text-decoration:none;display:inline-block;font:700 17px var(--serif);background:var(--brand);color:var(--brand-ink);border:0;border-radius:7px;padding:.65rem 1.3rem;cursor:pointer}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.secondary{background:transparent;color:var(--ink);border:1.5px solid var(--line-strong)}
+.memo{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:1.4rem 1.5rem 1.2rem;box-shadow:0 1px 0 var(--line)}
+.memo-head{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;font-size:15px;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:.6rem;margin-bottom:1rem}
+.memo-head b{color:var(--ink)}
+.stamp{font:500 13px var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1.5px solid currentColor;border-radius:4px;padding:.05rem .45rem;color:var(--brand)}
+.memo p{margin:.5rem 0}
+  .tw{overflow-x:auto;max-width:100%}
+table.cf{border-collapse:collapse;margin:1rem 0 .5rem;font:16px var(--mono);width:100%;max-width:36rem}
+table.cf caption{text-align:left;font:italic 15px var(--serif);color:var(--muted);padding-bottom:.35rem}
+table.cf th{font:700 14px var(--serif);text-align:right;padding:.35rem .6rem;border-bottom:1.5px solid var(--line-strong)}
+table.cf th:first-child,table.cf td:first-child{text-align:left}
+table.cf td{text-align:right;padding:.3rem .6rem;border-bottom:1px solid var(--line)}
+table.cf td.neg{color:var(--bad)}
+table.cf input{font:15px var(--mono);width:9rem;text-align:right;padding:.2rem .35rem;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink)}
+table.cf tfoot td{font-weight:500;border-top:1.5px solid var(--line-strong);border-bottom:0}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:640px){.pair{grid-template-columns:1fr}table.cf{font-size:14px}table.cf input{width:6.6rem}table.cf th,table.cf td{padding:.3rem .35rem}.memo{padding:1.1rem 1rem}}
+.ask{margin-top:1.2rem;display:grid;gap:1rem}
+fieldset{border:0;padding:0;margin:0}
+legend{font-weight:700;font-size:16px;margin-bottom:.35rem}
+.choices{display:flex;gap:.6rem;flex-wrap:wrap}
+.choice{position:relative}
+.choice input{position:absolute;opacity:0;inset:0}
+.choice span{display:inline-block;border:1.5px solid var(--line-strong);border-radius:999px;padding:.35rem 1rem;font-size:16px;cursor:pointer;background:var(--surface)}
+.choice input:checked + span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.choice input:focus-visible + span{outline:2.5px solid var(--focus);outline-offset:3px}
+.actions{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;margin-top:.4rem}
+.fb{border-radius:8px;padding:.8rem 1rem;margin-top:1rem;font-size:17px}
+.fb:empty{display:none}
+.fb.ok{background:var(--ok-tint);border-left:4px solid var(--ok)}
+.fb.bad{background:var(--bad-tint);border-left:4px solid var(--bad)}
+.fb b{font-weight:700}
+.attempts{font-size:14px;color:var(--muted)}
+details.helper{margin-top:1.4rem;background:var(--panel);border-radius:8px;padding:.7rem 1rem}
+details.helper summary{cursor:pointer;font-weight:700;font-size:16px}
+.helper-grid{display:flex;gap:1rem;flex-wrap:wrap;align-items:end;margin-top:.7rem}
+.helper-grid input{font:16px var(--mono);width:7.5rem;padding:.35rem .5rem;border:1.5px solid var(--line-strong);border-radius:5px;background:var(--surface);color:var(--ink)}
+.helper-out{font:500 16px var(--mono);min-height:1.6em;margin-top:.6rem}
+.slider-wrap{margin:1rem 0}
+input[type=range]{width:100%;max-width:30rem;accent-color:var(--brand)}
+.readout{font:500 18px var(--mono)}
+svg.curve{width:100%;max-width:36rem;height:auto;display:block;background:var(--panel);border-radius:8px;margin:.6rem 0}
+svg.curve text{font:13px var(--serif);fill:var(--muted)}
+.cert-preview{max-width:100%;border:1px solid var(--line);border-radius:6px;margin:1rem 0;display:block}
+.small{font-size:15px;color:var(--muted)}
+footer{max-width:760px;margin:0 auto;padding:0 1.1rem 3rem;font-size:14px;color:var(--muted)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the desk</a>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand"><b>Verde Kitchen</b> Real Estate Team</div>
+    <nav aria-label="Cards"><ol class="tiles" id="tiles"></ol></nav>
+    <button class="btn-quiet" id="themeBtn" type="button" aria-pressed="false">Dark mode</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+  <div id="view"></div>
+</main>
+<footer>
+  <p>Corporate Finance, Unit 5. Your numbers are generated from your email, so they are different from your classmates' numbers. Your progress is saved in this browser.</p>
+</footer>
+<div class="sr-only" aria-live="polite" id="announce"></div>
+<script src="desk-core.js"></script>
+<script>
+/* ===== selfcheck.js (copied verbatim from the interactive-health template) ===== */
+window.SelfCheck = (function () {
+  const checks = [];
+  return {
+    register(name, fn) { checks.push({ name, fn }); },
+    async run() {
+      const out = [];
+      for (const c of checks) {
+        try {
+          const r = await c.fn();
+          if (r === true || r === undefined) out.push({ name: c.name, ok: true });
+          else if (r === false) out.push({ name: c.name, ok: false, detail: 'returned false' });
+          else out.push({ name: c.name, ok: !!r.ok, detail: r.detail });
+        } catch (e) {
+          out.push({ name: c.name, ok: false, detail: String(e) });
+        }
+      }
+      return { ok: out.every((c) => c.ok), checks: out };
+    },
+  };
+})();
+window.__selfCheck = () => window.SelfCheck.run();
+</script>
+<script>
+(function () {
+'use strict';
+const D = window.Desk;
+const VERIFY_URL = 'https://rizecomputerscience.github.io/finan4-site-selection-desk/verify.html';
+const KEY = 'rize-finan4-desk-v1';
+const $ = (s, el) => (el || document).querySelector(s);
+const view = $('#view');
+const fmt = (x) => {
+  const v = Math.round(x);
+  return (v < 0 ? '-$' : '$') + Math.abs(v).toLocaleString('en-US');
+};
+const pct = (r) => D.pct(r);
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode: progress lives for this visit only */ } },
+};
+
+// ---------- theme ----------
+const themeBtn = $('#themeBtn');
+function setTheme(t) {
+  if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else document.documentElement.removeAttribute('data-theme');
+  themeBtn.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+  themeBtn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+  store.set(KEY + ':theme', t);
+}
+setTheme(store.get(KEY + ':theme') || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+themeBtn.addEventListener('click', () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+// ---------- state ----------
+let S = { name: '', email: '', cards: [], log: [], at: 0 };
+const CITIES = ['Boise, Idaho', 'Lansing, Michigan', 'Waco, Texas', 'Dayton, Ohio', 'Fresno, California', 'Tacoma, Washington',
+  'Durham, North Carolina', 'Omaha, Nebraska', 'Knoxville, Tennessee', 'Spokane, Washington', 'Tulsa, Oklahoma', 'Madison, Wisconsin',
+  'Chattanooga, Tennessee', 'Reno, Nevada', 'Savannah, Georgia', 'Des Moines, Iowa'];
+function cityFor(i) { const h = D.seedFor(S.email + '#city' + i); return CITIES[h % CITIES.length]; }
+function saveState() { store.set(KEY + ':' + D.seedFor(S.email), { name: S.name, email: S.email, log: S.log, at: S.at }); store.set(KEY + ':last', S.email); }
+function startFor(name, email) {
+  S.name = name.trim(); S.email = D.normEmail(email); S.cards = D.buildCards(S.email);
+  const saved = store.get(KEY + ':' + D.seedFor(S.email));
+  S.log = saved && saved.log ? saved.log : S.cards.map((c) => ({ id: c.id, solved: false, attempts: 0, value: null, choice: null, at: null }));
+  if (saved && saved.name && !name.trim()) S.name = saved.name;
+  S.at = saved && typeof saved.at === 'number' ? saved.at : 0;
+  saveState();
+}
+const solvedCount = () => S.log.filter((l) => l.solved).length;
+
+// ---------- tiles ----------
+function renderTiles() {
+  const ol = $('#tiles'); ol.innerHTML = '';
+  if (!S.email) return;
+  S.cards.forEach((c, i) => {
+    const li = document.createElement('li');
+    if (S.log[i].solved) li.classList.add('done');
+    if (i === S.at && S.view === 'card') li.classList.add('here');
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = String(i + 1);
+    b.setAttribute('aria-label', 'Card ' + (i + 1) + (S.log[i].solved ? ', solved' : ', not solved yet'));
+    b.addEventListener('click', () => go(i));
+    li.appendChild(b); ol.appendChild(li);
+  });
+  const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button';
+  b.textContent = '✓'; b.setAttribute('aria-label', 'Receipt'); b.addEventListener('click', () => showReceipt());
+  if (solvedCount() === 8) li.classList.add('done');
+  li.appendChild(b); ol.appendChild(li);
+}
+
+// ---------- start view ----------
+function showStart() {
+  S.view = 'start';
+  const last = store.get(KEY + ':last');
+  const lastSaved = last ? store.get(KEY + ':' + D.seedFor(last)) : null;
+  view.innerHTML = `
+    <p class="kicker">Corporate Finance, Unit 5</p>
+    <h1>The Site Selection Desk</h1>
+    <p class="dek">You just joined the real estate team at Verde Kitchen, a fast-casual restaurant chain. Eight proposed sites are waiting on your desk.</p>
+    <div class="howto">
+      <p><b>How to use this page:</b> Enter your name and school email, then work through the eight cards in order.
+      Each card asks for a number and, on most cards, a decision. When you finish, download your receipt and upload it to the assignment page.</p>
+    </div>
+    <form class="start" id="startForm" novalidate>
+      <div><label for="nm">Your full name</label><input type="text" id="nm" autocomplete="name" required value="${lastSaved ? esc(lastSaved.name) : ''}"></div>
+      <div><label for="em">Your school email</label><input type="email" id="em" autocomplete="email" required value="${lastSaved ? esc(lastSaved.email) : ''}" aria-describedby="emHelp">
+      <p class="field-help" id="emHelp">Your email sets your numbers. Type it exactly the way your school spells it, because your instructor uses it to check your receipt.</p></div>
+      <p class="fb bad" id="startErr" role="alert"></p>
+      <div class="actions"><button class="btn" type="submit">${lastSaved ? 'Continue' : 'Open the first card'}</button></div>
+    </form>`;
+  $('#startForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nm = $('#nm').value.trim(), em = $('#em').value.trim();
+    const err = $('#startErr');
+    if (!nm) { err.textContent = 'Enter your full name.'; $('#nm').focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { err.textContent = 'Enter your school email, like jdoe@college.edu.'; $('#em').focus(); return; }
+    startFor(nm, em);
+    const firstOpen = S.log.findIndex((l) => !l.solved);
+    go(firstOpen === -1 ? 8 : firstOpen);
+  });
+  renderTiles();
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---------- card copy ----------
+function memoFor(c, i) {
+  const city = cityFor(i);
+  switch (c.id) {
+    case 1: return { title: 'A warm-up before the sites', body: `
+      <p>Before you see any sites, here is a quick check. A landlord in ${city} offers Verde Kitchen ${fmt(c.amount)} in cash, paid at the end of year ${c.n}, if we give up our option on a lot.</p>
+      <p>Our rate is ${pct(c.r)}. What is that payment worth today?</p>`, hint: `Today's value = payment × 1/(1 + r)<sup>t</sup>. The discount factor for year ${c.n} at ${pct(c.r)} is ${D.df(c.r, c.n).toFixed(4)}.`, label: 'Value today' };
+    case 2: return { title: `Site 1: ${city}`, body: `
+      <p>Here is your first site. It costs ${fmt(-c.flows[0])} to build today and should bring in ${fmt(c.flows[1])} of cash each year for ${c.flows.length - 1} years.</p>
+      <p>Our rate is ${pct(c.r)}. What is the site's net present value (NPV), and should we build it? The discount factors are filled in. If it helps, fill in the present value column, and the table adds it up for you.</p>`, label: 'NPV' };
+    case 3: return { title: `Site 2: ${city}`, body: `
+      <p>This site takes two years to reach full sales, so its first two years bring in less cash. The table shows each year.</p>
+      <p>Our rate is ${pct(c.r)}. What is the NPV, and should we build it?</p>`, label: 'NPV' };
+    case 4: return { title: `Site 3: ${city}`, body: `
+      <p>The broker on this site is excited about it. It costs ${fmt(-c.flows[0])} and should bring in ${fmt(c.flows[1])} a year for ${c.flows.length - 1} years.</p>
+      <p>Our rate is ${pct(c.r)}. The discount factors are not filled in this time, so use the helper below or a spreadsheet. What is the NPV, and should we build it?</p>`, label: 'NPV' };
+    case 5: return { title: `Site 4: ${city}`, body: `
+      <p>Last year, when our rate was ${pct(c.r0)}, this site had an NPV of ${fmt(c.oldNpv)}, and the team planned to build it. Our lenders and investors now expect ${pct(c.r)}.</p>
+      <p>Recompute the NPV at ${pct(c.r)}. Should we still build it?</p>`, label: `NPV at ${pct(c.r)}` };
+    case 6: return { title: `Sites 5 and 6: one lease, two choices`, body: `
+      <p>Two sites in ${city} are competing for the same lease, so we can take only one. Both cost ${fmt(-c.aFlows[0])} today.</p>
+      <p>Site A pays back its cost in ${c.aPayback.toFixed(1)} years. Site B takes ${c.bPayback.toFixed(1)} years. Our rate is ${pct(c.r)}. Which site should we take, and what is its NPV?</p>`, label: 'NPV of the site you pick' };
+    case 7: return { title: `Site 7: what would it take?`, body: `
+      <p>A developer in ${city} wants to know the least cash this site has to bring in for us to say yes. The site costs ${fmt(c.cost)} today and would run for ${c.n} years, with the same cash flow every year.</p>
+      <p>Our rate is ${pct(c.r)}. What yearly cash flow makes the NPV exactly zero?</p>`, hint: `A cash flow of $1 a year for ${c.n} years at ${pct(c.r)} is worth $${D.annuityFactor(c.r, c.n).toFixed(4)} today (add up the ${c.n} discount factors). So the yearly cash flow × ${D.annuityFactor(c.r, c.n).toFixed(4)} has to equal the cost.`, label: 'Yearly cash flow' };
+    case 8: return { title: `Site 8: the break-even rate`, body: `
+      <p>Investors often ask for a site's break-even rate: the discount rate at which its NPV is exactly zero. Finance calls it the <b>internal rate of return</b>, or <b>IRR</b>. If a site's IRR is above our rate, the site earns more than we require.</p>
+      <p>This site in ${city} costs ${fmt(-c.flows[0])} and brings in ${fmt(c.flows[1])} a year for ${c.flows.length - 1} years. Drag the rate and watch the NPV. Which rate is closest to the site's IRR?</p>`, label: '' };
+  }
+}
+
+// ---------- card view ----------
+function go(i) {
+  if (i >= 8) return showReceipt();
+  S.at = i; S.view = 'card'; saveState();
+  const c = S.cards[i], L = S.log[i], m = memoFor(c, i);
+  let html = `<p class="kicker">Card ${i + 1} of 8</p>
+    <article class="memo" aria-labelledby="cardTitle">
+      <div class="memo-head"><span>From <b>Dana Ortiz</b>, VP of Real Estate</span>${L.solved ? '<span class="stamp">Solved</span>' : ''}</div>
+      <h2 id="cardTitle">${m.title}</h2>${m.body}`;
+  if (c.kind === 'npv') html += cfTable(c.flows, c.r, c.showFactors, c.scratch, 'Cash flows for this site');
+  if (c.kind === 'choose') html += `<div class="pair">${cfTable(c.aFlows, c.r, false, false, 'Site A')}${cfTable(c.bFlows, c.r, false, false, 'Site B')}</div>`;
+  if (c.kind === 'irr') html += irrBlock(c);
+  html += `<form class="ask" id="ask" novalidate>`;
+  if (c.kind !== 'irr') html += `<div><label for="val">${m.label}</label><input class="money" id="val" inputmode="decimal" autocomplete="off" placeholder="$0" value="${L.value ? esc(L.value) : ''}" aria-describedby="valHelp"><p class="field-help" id="valHelp">Round to the nearest dollar. A negative amount can start with a minus sign.</p></div>`;
+  if (c.decision === 'build' || c.decision === 'pass') html += radios('dec', 'Your decision', [['build', 'Build it'], ['pass', 'Pass on it']], L.choice);
+  if (c.kind === 'choose') html += radios('dec', 'Which site do we take?', [['A', 'Site A'], ['B', 'Site B']], L.choice);
+  if (c.kind === 'irr') html += radios('dec', 'The rate closest to this site’s IRR', c.options.map((o) => [String(o), o + '%']), L.choice);
+  html += `<div class="actions"><button class="btn" type="submit">Check</button>
+    ${m.hint ? '<button class="btn secondary" type="button" id="hintBtn" aria-expanded="false">Show a hint</button>' : ''}
+    <span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
+    ${m.hint ? `<div class="fb" id="hint" hidden style="background:var(--hint-tint);border-left:4px solid var(--hint)">${m.hint}</div>` : ''}
+    <div class="fb" id="fb" aria-live="polite"></div>
+    <div class="actions" id="nextRow" ${L.solved ? '' : 'hidden'}><button class="btn" type="button" id="nextBtn">${i === 7 ? 'Get your receipt' : 'Next card'}</button></div>
+  </form></article>`;
+  if (c.kind !== 'irr' && c.kind !== 'pv1') html += helperBlock(c.r);
+  if (c.kind === 'pv1') html += helperBlock(c.r);
+  view.innerHTML = html;
+  wireCard(c, i, m);
+  renderTiles();
+  $('#main').focus();
+  window.scrollTo(0, 0);
+}
+function radios(name, legend, opts, current) {
+  return `<fieldset><legend>${legend}</legend><div class="choices">${opts.map(([v, t]) => `<label class="choice"><input type="radio" name="${name}" value="${v}" ${current === v ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div></fieldset>`;
+}
+function cfTable(flows, r, showFactors, scratch, caption) {
+  let rows = flows.map((cf, t) => {
+    const f = D.df(r, t);
+    return `<tr><td>${t}</td><td class="${cf < 0 ? 'neg' : ''}">${fmt(cf)}</td>${showFactors ? `<td>${f.toFixed(4)}</td>` : ''}${scratch ? `<td><label class="sr-only" for="pv${t}">Present value, year ${t}</label><input id="pv${t}" class="pvin" inputmode="decimal" autocomplete="off"></td>` : ''}</tr>`;
+  }).join('');
+  const foot = scratch ? `<tfoot><tr><td colspan="${showFactors ? 3 : 2}">Total of your present values</td><td id="pvTotal">$0</td></tr></tfoot>` : '';
+  return `<div class="tw"><table class="cf"><caption>${caption} (year 0 is today)</caption><thead><tr><th scope="col">Year</th><th scope="col">Cash flow</th>${showFactors ? '<th scope="col">Discount factor</th>' : ''}${scratch ? '<th scope="col">Present value</th>' : ''}</tr></thead><tbody>${rows}</tbody>${foot}</table></div>`;
+}
+function helperBlock(r) {
+  return `<details class="helper"><summary>Discount factor helper</summary>
+    <div class="helper-grid">
+      <div><label for="hr">Rate (%)</label><input id="hr" inputmode="decimal" value="${Math.round(r * 1000) / 10}"></div>
+      <div><label for="ht">Year</label><input id="ht" inputmode="numeric" value="1"></div>
+      <div><label for="ha">Cash flow (optional)</label><input id="ha" inputmode="decimal" placeholder="$0"></div>
+    </div>
+    <p class="helper-out" id="hout" aria-live="polite"></p></details>`;
+}
+function irrBlock(c) {
+  return `<div class="slider-wrap"><label for="rate">Discount rate: <span class="readout" id="rateOut"></span></label>
+    <input type="range" id="rate" min="0" max="30" step="0.5" value="5" aria-describedby="npvOut">
+    <p class="readout" id="npvOut" aria-live="polite"></p>
+    <svg class="curve" id="curve" viewBox="0 0 560 220" role="img" aria-label="NPV of this site at discount rates from 0 to 30 percent"></svg></div>`;
+}
+function wireCard(c, i, m) {
+  const L = S.log[i];
+  const form = $('#ask');
+  if (m.hint) $('#hintBtn').addEventListener('click', (e) => { const h = $('#hint'); h.hidden = !h.hidden; e.target.setAttribute('aria-expanded', String(!h.hidden)); e.target.textContent = h.hidden ? 'Show a hint' : 'Hide the hint'; });
+  // scratch column
+  document.querySelectorAll('.pvin').forEach((inp) => inp.addEventListener('input', () => {
+    let s = 0; document.querySelectorAll('.pvin').forEach((x) => { const v = D.parseMoney(x.value); if (isFinite(v)) s += v; });
+    $('#pvTotal').textContent = fmt(s);
+  }));
+  // helper
+  const hr = $('#hr'), ht = $('#ht'), ha = $('#ha'), hout = $('#hout');
+  if (hr) {
+    const upd = () => {
+      const r = parseFloat(hr.value) / 100, t = parseInt(ht.value, 10), a = D.parseMoney(ha.value);
+      if (!isFinite(r) || !isFinite(t) || t < 0 || r <= -1) { hout.textContent = 'Enter a rate and a year.'; return; }
+      const f = D.df(r, t);
+      hout.textContent = `Factor for year ${t} at ${Math.round(r * 1000) / 10}%: ${f.toFixed(4)}` + (isFinite(a) ? `. Present value of ${fmt(a)}: ${fmt(a * f)}` : '');
+    };
+    [hr, ht, ha].forEach((x) => x.addEventListener('input', upd)); upd();
+  }
+  // irr slider
+  if (c.kind === 'irr') {
+    const rate = $('#rate');
+    const svg = $('#curve');
+    const W = 560, H = 220, P = 36;
+    const vals = []; for (let k = 0; k <= 60; k++) vals.push([k / 2, D.npv(k / 200, c.flows)]);
+    const ymax = Math.max(...vals.map((v) => v[1])), ymin = Math.min(...vals.map((v) => v[1]));
+    const X = (x) => P + (x / 30) * (W - 2 * P), Y = (y) => P / 2 + (ymax - y) / (ymax - ymin) * (H - P * 1.5);
+    const path = vals.map((v, k) => (k ? 'L' : 'M') + X(v[0]).toFixed(1) + ' ' + Y(v[1]).toFixed(1)).join(' ');
+    svg.innerHTML = `<line x1="${P}" x2="${W - P}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line-strong)" stroke-dasharray="4 4"/>
+      <text x="${W - P}" y="${Y(0) - 6}" text-anchor="end">NPV = 0</text>
+      <path id="npvPath" d="${path}" fill="none" stroke="var(--brand)" stroke-width="3"/>
+      <text x="${P}" y="${H - 6}">0%</text><text x="${W - P}" y="${H - 6}" text-anchor="end">30%</text>
+      <circle id="dot" r="7" fill="var(--ink)"/>`;
+    const upd = () => {
+      const r = parseFloat(rate.value) / 100, v = D.npv(r, c.flows);
+      $('#rateOut').textContent = (Math.round(r * 1000) / 10) + '%';
+      $('#npvOut').textContent = 'NPV at this rate: ' + fmt(v);
+      const dot = $('#dot'); dot.setAttribute('cx', X(r * 100)); dot.setAttribute('cy', Y(v));
+    };
+    rate.addEventListener('input', upd); upd();
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = $('#val') ? $('#val').value : null;
+    const ch = (form.querySelector('input[name=dec]:checked') || {}).value || null;
+    const res = D.judgeCard(c, { value: val, choice: ch });
+    L.attempts = (L.attempts || 0) + 1; L.value = val; L.choice = ch;
+    const fb = $('#fb');
+    if (res.ok) {
+      L.solved = true; L.at = new Date().toISOString();
+      fb.className = 'fb ok'; fb.innerHTML = '<b>Right.</b> ' + praise(c);
+      $('#nextRow').hidden = false;
+      $('#nextBtn').focus();
+    } else {
+      fb.className = 'fb bad'; fb.innerHTML = '<b>Not yet.</b> ' + esc(res.msg || 'Check your work and try again.');
+    }
+    $('#att').textContent = 'Checks so far: ' + L.attempts;
+    saveState(); renderTiles();
+  });
+  $('#nextBtn').addEventListener('click', () => go(i + 1));
+}
+function praise(c) {
+  switch (c.id) {
+    case 1: return `The payment is worth ${fmt(c.answer)} today. Waiting ${c.n} years costs us the difference.`;
+    case 2: return `The site is worth ${fmt(c.answer)} more than it costs, so we build it.`;
+    case 3: return `Even with a slow start, the site adds ${fmt(c.answer)} of value, so we build it.`;
+    case 4: return `The site is worth ${fmt(-c.answer)} less than it costs. Passing protects the company's money, even if the broker is disappointed.`;
+    case 5: return `At ${pct(c.r)} the same cash flows are worth less today, and the NPV turns negative. A higher required rate can turn a yes into a no.`;
+    case 6: return `Site B adds ${fmt(c.answer)} of value, against ${fmt(c.aNpv)} for Site A. Payback favors A, but payback ignores everything after the cost is recovered.`;
+    case 7: return `At ${fmt(c.answer)} a year the site exactly earns our ${pct(c.r)} rate. Anything above that gives a positive NPV.`;
+    case 8: return `The NPV crosses zero near ${c.answer}%. That is above our ${pct(c.r)} rate, so this site clears the bar.`;
+  }
+}
+
+// ---------- receipt ----------
+async function makeReceiptBlob() {
+  const payload = D.makePayload(S.name, S.email, S.log);
+  const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 760;
+  const g = canvas.getContext('2d');
+  g.fillStyle = '#F7F5F0'; g.fillRect(0, 0, 1200, 760);
+  g.strokeStyle = '#1C6B4A'; g.lineWidth = 6; g.strokeRect(24, 24, 1152, 712);
+  g.lineWidth = 1.5; g.strokeRect(38, 38, 1124, 684);
+  g.fillStyle = '#1C6B4A'; g.font = 'italic 26px Georgia, serif'; g.fillText('Verde Kitchen Real Estate Team  ·  Corporate Finance, Unit 5', 80, 104);
+  g.fillStyle = '#1B211D'; g.font = '64px Georgia, serif'; g.fillText('The Site Selection Desk', 80, 184);
+  g.font = '34px Georgia, serif'; g.fillText(S.name, 80, 254);
+  g.fillStyle = '#5C625D'; g.font = '24px Georgia, serif'; g.fillText(S.email, 80, 292);
+  const solved = solvedCount();
+  g.fillStyle = '#1B211D'; g.font = 'bold 40px Georgia, serif'; g.fillText('Cards solved: ' + solved + ' of 8', 80, 372);
+  for (let k = 0; k < 8; k++) {
+    const x = 80 + k * 130, y = 410, l = S.log[k];
+    g.fillStyle = l.solved ? '#1C6B4A' : '#EEEBE3'; g.fillRect(x, y, 112, 112);
+    g.fillStyle = l.solved ? '#FFFFFF' : '#5C625D'; g.font = 'bold 40px Georgia, serif'; g.textAlign = 'center';
+    g.fillText(String(k + 1), x + 56, y + 58);
+    g.font = '18px Georgia, serif'; g.fillText(l.solved ? (l.attempts + (l.attempts === 1 ? ' check' : ' checks')) : 'open', x + 56, y + 92);
+    g.textAlign = 'left';
+  }
+  g.fillStyle = '#5C625D'; g.font = '22px Georgia, serif';
+  g.fillText('Issued ' + new Date(payload.issued).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }), 80, 590);
+  g.fillStyle = '#1B211D'; g.font = 'bold 30px monospace'; g.fillText('Verification code  ' + D.shortCode(payload.sum), 80, 640);
+  g.fillStyle = '#5C625D'; g.font = '19px Georgia, serif'; g.fillText('Instructors can check this receipt at ' + VERIFY_URL.replace('https://', ''), 80, 684);
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const withText = D.addTextChunk(bytes, D.encodeReceipt(payload));
+  return { blob: new Blob([withText], { type: 'image/png' }), url: canvas.toDataURL('image/png'), payload };
+}
+async function showReceipt() {
+  if (!S.email) return showStart();
+  S.view = 'receipt'; renderTiles();
+  const solved = solvedCount();
+  const r = await makeReceiptBlob();
+  const fileName = 'SiteSelectionDesk_' + S.name.replace(/[^A-Za-z0-9]+/g, '') + '.png';
+  view.innerHTML = `<p class="kicker">Your receipt</p>
+    <h2>${solved === 8 ? 'All eight cards are solved.' : 'You have solved ' + solved + ' of 8 cards.'}</h2>
+    <p>${solved === 8 ? 'Download your receipt and upload it to the assignment page.' : 'You can download a receipt now and upload it for partial credit, or go back and finish the open cards first.'}</p>
+    <div class="actions"><a class="btn" id="dl" download="${fileName}" href="#">Download your receipt</a>
+    ${solved < 8 ? '<button class="btn secondary" type="button" id="back">Go to the first open card</button>' : ''}</div>
+    <img class="cert-preview" alt="Receipt preview: ${esc(S.name)}, ${solved} of 8 cards solved, verification code ${D.shortCode(r.payload.sum)}." src="${r.url}">
+    <p class="small">The receipt file is named ${esc(fileName)}. Opening it again later will not change it. If you solve more cards, download a new receipt.</p>
+    <p class="small">Not you? <a href="#" id="switch">Start over with a different email</a>.</p>`;
+  const a = $('#dl'); const objUrl = URL.createObjectURL(r.blob); a.href = objUrl;
+  if ($('#back')) $('#back').addEventListener('click', () => go(S.log.findIndex((l) => !l.solved)));
+  $('#switch').addEventListener('click', (e) => { e.preventDefault(); S = { name: '', email: '', cards: [], log: [], at: 0 }; store.set(KEY + ':last', null); showStart(); });
+  $('#main').focus();
+}
+
+// ---------- boot ----------
+const last = store.get(KEY + ':last');
+const lastSaved = last ? store.get(KEY + ':' + D.seedFor(last)) : null;
+if (lastSaved && lastSaved.name) { startFor(lastSaved.name, lastSaved.email); go(Math.min(S.at, 7)); }
+else showStart();
+
+// ---------- self-checks ----------
+SelfCheck.register('engine loaded', () => !!(window.Desk && Desk.buildCards) || { ok: false, detail: 'desk-core.js missing' });
+SelfCheck.register('cards generate for a test email', () => {
+  const cs = Desk.buildCards('selfcheck@example.edu');
+  return (cs.length === 8 && cs[1].answer > 0 && cs[3].answer < 0) || { ok: false, detail: 'unexpected card set' };
+});
+SelfCheck.register('judging marks right and wrong answers correctly', () => {
+  const cs = Desk.buildCards('selfcheck@example.edu');
+  for (const c of cs) {
+    const good = c.kind === 'irr' ? { choice: String(c.answer) } : { value: String(Math.round(c.answer)), choice: c.decision };
+    if (!Desk.judgeCard(c, good).ok) return { ok: false, detail: 'card ' + c.id + ' rejects its own answer' };
+    const bad = c.kind === 'irr' ? { choice: String(c.simple === c.answer ? c.answer + 4 : c.simple) } : { value: String(Math.round(c.answer) + 50000), choice: c.decision };
+    if (Desk.judgeCard(c, bad).ok) return { ok: false, detail: 'card ' + c.id + ' accepts a wrong answer' };
+  }
+  return true;
+});
+SelfCheck.register('a page view rendered', () => view.textContent.trim().length > 200 || { ok: false, detail: 'view is empty' });
+SelfCheck.register('receipt PNG round-trips its payload', async () => {
+  const cs = Desk.buildCards('selfcheck@example.edu');
+  const log = cs.map((c) => ({ id: c.id, solved: true, attempts: 1, value: c.kind === 'irr' ? null : String(Math.round(c.answer)), choice: c.kind === 'irr' ? String(c.answer) : c.decision }));
+  const p = Desk.makePayload('Self Check', 'selfcheck@example.edu', log);
+  const cv = document.createElement('canvas'); cv.width = 20; cv.height = 20;
+  const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
+  const bytes = Desk.addTextChunk(new Uint8Array(await blob.arrayBuffer()), Desk.encodeReceipt(p));
+  const back = Desk.decodeReceipt(Desk.readTextChunk(bytes));
+  const v = Desk.verifyPayload(back);
+  return (v.checksumOk && v.solved === 8) || { ok: false, detail: 'round trip failed: ' + JSON.stringify(v.problems) };
+});
+})();
+</script>
+</body>
+</html>

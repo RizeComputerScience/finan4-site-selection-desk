@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check Site Selection Desk Receipts</title>
+<style>
+:root{color-scheme:light dark;--bg:#F7F5F0;--surface:#fff;--ink:#1B211D;--muted:#5C625D;--line:#D9D4C8;--ok:#1C7340;--ok-tint:#E0F2E5;--bad:#A8261E;--bad-tint:#FBE7E4;--brand:#1C6B4A}
+@media (prefers-color-scheme:dark){:root{--bg:#121815;--surface:#18201C;--ink:#E9EEEA;--muted:#AEBAB3;--line:#2F3B35;--ok:#7DD49A;--ok-tint:#173324;--bad:#FF8D84;--bad-tint:#42201E;--brand:#7DD49A}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 Georgia,'Iowan Old Style',serif}
+main{max-width:980px;margin:0 auto;padding:2rem 1.2rem 4rem}
+h1{font:400 38px/1.1 Georgia,serif;margin:0 0 .6rem}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:2rem;text-align:center;background:var(--surface);margin:1.4rem 0}
+.drop.over{border-color:var(--brand)}
+:focus-visible{outline:2.5px solid var(--ink);outline-offset:3px}
+table{border-collapse:collapse;width:100%;font-size:15px;margin-top:1rem}
+th,td{border-bottom:1px solid var(--line);padding:.45rem .5rem;text-align:left;vertical-align:top}
+th{font-size:14px}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
+.note{background:var(--surface);border-left:4px solid var(--brand);padding:.7rem 1rem;border-radius:6px}
+code{font-family:ui-monospace,Menlo,monospace;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Check Site Selection Desk receipts</h1>
+  <p>This page is for instructors. Add one or more receipt files (PNG) that students uploaded. For each one, the page rebuilds that student's numbers from the email on the receipt and re-grades every card from scratch. It does not trust the score printed on the image.</p>
+  <p class="note"><b>Suggested points:</b> 20 points times verified cards divided by 8. Nothing leaves your computer; the files are read in this browser only.</p>
+  <div class="drop" id="drop">
+    <p><label for="files"><b>Choose receipt files</b></label> or drop them here.</p>
+    <input type="file" id="files" accept="image/png" multiple>
+  </div>
+  <div aria-live="polite" id="out"></div>
+</main>
+<script src="desk-core.js"></script>
+<script>
+(function(){
+const out=document.getElementById('out');
+const rows=[];
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function handle(files){
+  for(const f of files){
+    const bytes=new Uint8Array(await f.arrayBuffer());
+    const text=Desk.readTextChunk(bytes);
+    if(!text){rows.push({file:f.name,error:'No receipt data found. This is not a receipt from the Site Selection Desk, or the image was re-saved (a screenshot or an edited copy loses the data).'});continue;}
+    const p=Desk.decodeReceipt(text);
+    if(!p){rows.push({file:f.name,error:'The receipt data could not be read.'});continue;}
+    const v=Desk.verifyPayload(p);
+    rows.push({file:f.name,p,v});
+  }
+  render();
+}
+function render(){
+  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Student</th><th scope="col">Verified cards</th><th scope="col">Points (of 20)</th><th scope="col">Checks</th></tr></thead><tbody>';
+  for(const r of rows){
+    if(r.error){h+=`<tr><td>${esc(r.file)}</td><td colspan="4" class="bad">${esc(r.error)}</td></tr>`;continue;}
+    const pts=Math.round(20*r.v.solved/8*10)/10;
+    const flags=r.v.problems.length?`<span class="bad">${r.v.problems.map(esc).join('<br>')}</span>`:'<span class="ok">Receipt is intact and every solved card checks out.</span>';
+    const att=r.v.rows.map(x=>`${x.id}:${x.verified?'✓':'–'}${x.attempts?' ('+x.attempts+')':''}`).join(' &nbsp;');
+    h+=`<tr><td>${esc(r.file)}</td><td>${esc(r.p.name)}<br><code>${esc(r.p.email)}</code><br><small>Issued ${esc(new Date(r.p.issued).toLocaleString())}, code ${esc(Desk.shortCode(r.p.sum||'000000000000'))}</small></td><td>${r.v.solved} of 8<br><small>${att}</small></td><td>${pts}</td><td>${flags}</td></tr>`;
+  }
+  h+='</tbody></table><p><small>In the card list, the number in parentheses is how many times the student pressed Check on that card.</small></p>';
+  out.innerHTML=h;
+}
+const inp=document.getElementById('files'),drop=document.getElementById('drop');
+inp.addEventListener('change',()=>handle(inp.files));
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',ev=>handle(ev.dataTransfer.files));
+})();
+</script>
+</body>
+</html>
