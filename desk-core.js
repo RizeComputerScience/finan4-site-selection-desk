@@ -289,7 +289,8 @@
     p.sum = checksum(canonical(p));
     return p;
   }
-  function pointsFor(doneCount) { return Math.round((POINTS * doneCount / STEPS.length) * 2) / 2; }
+  // Matches the assignment's three-level completion rubric: all steps = full points, at least half = half, else 0.
+  function pointsFor(doneCount) { return doneCount >= STEPS.length ? POINTS : doneCount >= STEPS.length / 2 ? POINTS / 2 : 0; }
   function verifyPayload(p) {
     const out = { checksumOk: false, rows: [], done: 0, total: STEPS.length, points: 0, problems: [] };
     if (!p || p.app !== APP) { out.problems.push('This is not a Site Selection Desk receipt.'); return out; }
