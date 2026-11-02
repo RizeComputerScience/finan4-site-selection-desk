@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   const APP = 'finan4-u5-site-selection-desk';
-  const VERSION = 2;
+  const VERSION = 3;
   const SALT = 'rize-finan4-desk-v2:c41e07';
   const POINTS = 20;
 
@@ -81,13 +81,6 @@
         'Year 1 is the end of the first full year of sales. Year 0 comes before that: it is today, when the company pays to build.',
         'Year 0 is not a planning year. It is today, the moment the company pays the building cost.',
         'Year 0 does have cash: the building cost, paid today.'] },
-    { q: 'What is the discount factor for cash in year 0?',
-      options: ['0', '1', '1 ÷ (1 + r)', 'It depends on the discount rate'],
-      answer: 1,
-      why: ['A factor of 0 would make today’s cash worth nothing. Cash today is worth exactly its face value, so the factor is 1.',
-        'Right. 1 ÷ (1 + r)⁰ = 1, so today’s cash is counted at full value.',
-        '1 ÷ (1 + r) is the factor for year 1, one year from now. For year 0 the exponent is 0, so the factor is 1.',
-        'Any number raised to the power 0 is 1, so the year 0 factor is 1 at every rate.'] },
     { q: 'At a 9% required return, a site has an NPV of +$40,000. What does that tell you?',
       options: ['The site earns more than 9% a year, and adds about $40,000 of value beyond that', 'The site will make $40,000 of profit in total', 'The site earns exactly 9% a year', 'The site pays back its cost within a year'],
       answer: 0,
@@ -95,6 +88,13 @@
         'NPV is not total profit. It is the value the site adds, in today’s dollars, after earning the required 9%.',
         'A site that earns exactly 9% has an NPV of zero. A positive NPV means it earns more than 9%.',
         'NPV does not measure how fast a site pays back. That is a different measure, called payback.'] },
+    { q: 'Investors start expecting more, so the company raises its required return from 8% to 12%. A site’s cost and cash flows do not change. What happens to its NPV?',
+      options: ['It falls', 'It rises', 'It stays the same', 'It depends only on the building cost'],
+      answer: 0,
+      why: ['Right. At 12%, every future dollar is worth less today, so the same cash flows add up to less and the NPV falls. The cost is paid today, so it does not shrink.',
+        'A higher required return shrinks the value of future cash, so the NPV goes down, not up.',
+        'The cash flows are the same, but each one is now divided by a bigger number, (1.12)^t instead of (1.08)^t, so the NPV changes.',
+        'The cost is paid today and is not discounted. What changes is the value today of the future cash, and that falls.'] },
   ];
 
   // ---------- site generation ----------
@@ -160,9 +160,11 @@
 
   const STEPS = [
     { id: 'walk', label: 'Worked example' },
-    { id: 'quiz', label: 'Quick check' },
+    { id: 'q1', label: 'Check 1', quiz: 0 },
     { id: 's1', label: 'Site 1' },
+    { id: 'q2', label: 'Check 2', quiz: 1 },
     { id: 's2', label: 'Site 2' },
+    { id: 'q3', label: 'Check 3', quiz: 2 },
     { id: 's3', label: 'Site 3' },
     { id: 's4', label: 'Site 4' },
     { id: 's5', label: 'Site 5' },
@@ -263,9 +265,8 @@
     const ok = n.ok && choiceOk;
     return { ok, code: n.ok ? (choiceOk ? 'ok' : 'decision') : n.code, msg: n.ok ? (choiceOk ? null : decisionMsg(site, entry.choice)) : n.msg, numberOk: n.ok, choiceOk };
   }
-  function judgeQuiz(answers) {
-    const res = QUIZ.map((q, i) => ({ ok: Number(answers && answers[i]) === q.answer }));
-    return { ok: res.every((x) => x.ok), res };
+  function judgeQuiz(qi, answer) {
+    return { ok: answer != null && Number(answer) === QUIZ[qi].answer };
   }
   function judgeMemo(text) {
     const w = wordCount(text);
@@ -289,7 +290,7 @@
     p.sum = checksum(canonical(p));
     return p;
   }
-  // Matches the assignment's three-level completion rubric: all steps = full points, at least half = half, else 0.
+  // Matches the assignment's three-level completion rubric: all ten steps = full points, at least half = half, else 0.
   function pointsFor(doneCount) { return doneCount >= STEPS.length ? POINTS : doneCount >= STEPS.length / 2 ? POINTS / 2 : 0; }
   function verifyPayload(p) {
     const out = { checksumOk: false, rows: [], done: 0, total: STEPS.length, points: 0, problems: [] };
@@ -302,7 +303,7 @@
       const e = (p.steps || []).find((x) => x.id === s.id) || {};
       let ok = false;
       if (s.id === 'walk') ok = !!e.done;
-      else if (s.id === 'quiz') ok = !!e.done && judgeQuiz(e.answers || []).ok;
+      else if (s.quiz != null) ok = !!e.done && judgeQuiz(s.quiz, e.choice).ok;
       else if (s.id === 'memo') ok = !!e.done && judgeMemo(p.memo).ok;
       else { const site = sites.find((x) => x.id === s.id); ok = !!e.done && judgeSite(site, { value: e.value, choice: e.choice, rows: e.rows }).ok; }
       if (e.done && !ok) out.problems.push(s.label + ' is marked complete, but its answer does not check out for this email.');
