@@ -26,8 +26,8 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:14px}
 <body>
 <main>
   <h1>Check Site Selection Desk receipts</h1>
-  <p>This page is for instructors. Add one or more receipt files (PNG) that students uploaded. For each one, the page rebuilds that student's numbers from the email on the receipt and re-grades every card from scratch. It does not trust the score printed on the image.</p>
-  <p class="note"><b>Suggested points:</b> 20 points times verified cards divided by 8. Nothing leaves your computer; the files are read in this browser only.</p>
+  <p>This page is for instructors. The Site Selection Desk is graded on completion: the points printed in the colored box on each receipt are the grade, and you can enter them as shown. Use this page to spot-check. Add one or more receipt files (PNG) that students uploaded; for each one, the page rebuilds that student's numbers from the email on the receipt and re-checks every step from scratch, without trusting the image.</p>
+  <p class="note"><b>Points:</b> 20 points times verified steps divided by 8. Nothing leaves your computer; the files are read in this browser only.</p>
   <div class="drop" id="drop">
     <p><label for="files"><b>Choose receipt files</b></label> or drop them here.</p>
     <input type="file" id="files" accept="image/png" multiple>
@@ -53,15 +53,15 @@ async function handle(files){
   render();
 }
 function render(){
-  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Student</th><th scope="col">Verified cards</th><th scope="col">Points (of 20)</th><th scope="col">Checks</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Student</th><th scope="col">Verified steps</th><th scope="col">Points (of 20)</th><th scope="col">Checks</th></tr></thead><tbody>';
   for(const r of rows){
     if(r.error){h+=`<tr><td>${esc(r.file)}</td><td colspan="4" class="bad">${esc(r.error)}</td></tr>`;continue;}
-    const pts=Math.round(20*r.v.solved/8*10)/10;
-    const flags=r.v.problems.length?`<span class="bad">${r.v.problems.map(esc).join('<br>')}</span>`:'<span class="ok">Receipt is intact and every solved card checks out.</span>';
-    const att=r.v.rows.map(x=>`${x.id}:${x.verified?'✓':'–'}${x.attempts?' ('+x.attempts+')':''}`).join(' &nbsp;');
-    h+=`<tr><td>${esc(r.file)}</td><td>${esc(r.p.name)}<br><code>${esc(r.p.email)}</code><br><small>Issued ${esc(new Date(r.p.issued).toLocaleString())}, code ${esc(Desk.shortCode(r.p.sum||'000000000000'))}</small></td><td>${r.v.solved} of 8<br><small>${att}</small></td><td>${pts}</td><td>${flags}</td></tr>`;
+    const pts=r.v.points;
+    const flags=r.v.problems.length?`<span class="bad">${r.v.problems.map(esc).join('<br>')}</span>`:'<span class="ok">Receipt is intact and every completed step checks out.</span>';
+    const att=r.v.rows.map(x=>`${esc(x.label)} ${x.verified?'✓':'–'}${x.attempts?' ('+x.attempts+(x.help?', help '+x.help:'')+')':''}`).join('<br>');
+    h+=`<tr><td>${esc(r.file)}</td><td>${esc(r.p.name)}<br><code>${esc(r.p.email)}</code><br><small>Issued ${esc(new Date(r.p.issued).toLocaleString())}, code ${esc(Desk.shortCode(r.p.sum||'000000000000'))}</small></td><td>${r.v.done} of 8<br><small>${att}</small></td><td>${pts}</td><td>${flags}${r.p.memo?`<details><summary>Note to the VP</summary><p>${esc(r.p.memo)}</p></details>`:''}</td></tr>`;
   }
-  h+='</tbody></table><p><small>In the card list, the number in parentheses is how many times the student pressed Check on that card.</small></p>';
+  h+='</tbody></table><p><small>In the step list, the numbers in parentheses are how many times the student pressed Check, and the help level they opened (1 = first row shown, 2 = every row shown). Help never reduces points.</small></p>';
   out.innerHTML=h;
 }
 const inp=document.getElementById('files'),drop=document.getElementById('drop');
