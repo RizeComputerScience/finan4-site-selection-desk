@@ -403,6 +403,7 @@ function showWalk() {
 
 // ---------- one-question checks (quick wins between sites) ----------
 const CHECK_TITLES = ['Quick win: what is year 0?', 'Quick win: what does NPV tell you?', 'Quick win: when the required return rises'];
+const optOrder = (q) => { const hs = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return x; }; return q.options.map((_, j) => j).sort((a, b) => hs(q.q + '|' + a) - hs(q.q + '|' + b)); };
 function showCheck(step) {
   const L = S.log[step.id], q = D.QUIZ[step.quiz], idx = D.STEPS.findIndex((x) => x.id === step.id) + 1;
   const cur = L.choice != null ? Number(L.choice) : null;
@@ -410,7 +411,7 @@ function showCheck(step) {
     <article class="memo" aria-labelledby="t">${memoHead(L.done)}
       <h2 id="t">${esc(CHECK_TITLES[step.quiz])}</h2>
       <form id="qf" novalidate><fieldset><legend>${esc(q.q)}</legend>
-        <div class="choices stack">${q.options.map((o, j) => `<label class="choice"><input type="radio" name="q" value="${j}" ${cur === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div></fieldset>
+        <div class="choices stack">${optOrder(q).map((j) => `<label class="choice"><input type="radio" name="q" value="${j}" ${cur === j ? 'checked' : ''}><span>${esc(q.options[j])}</span></label>`).join('')}</div></fieldset>
         <div class="actions"><button class="btn" type="submit">Check</button><span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
         <div class="fb" id="fb" aria-live="polite"></div>
         <div class="actions" id="nextRow" ${L.done ? '' : 'hidden'}><button class="btn" type="button" id="nextBtn">${nextLabel(step.id)}</button></div>
