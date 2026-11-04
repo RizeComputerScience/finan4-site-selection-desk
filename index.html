@@ -137,6 +137,8 @@ aside.calc h2{font:700 16px var(--serif);margin:0}
 .keys button.op{background:var(--brand-tint)}
 .keys button.eq{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
 footer{max-width:820px;margin:0 auto;padding:0 1.1rem 3rem;font-size:14px;color:var(--muted)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1.75rem 0 0;padding-top:1.1rem;border-top:1px solid var(--line)}.pager[hidden]{display:none}
+#nextRow{display:none}
 </style>
 </head>
 <body>
@@ -300,6 +302,18 @@ function renderNav() {
   });
   const cur = ol.querySelector('[aria-current]'); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
+function renderPager(id) {
+  let pg = document.getElementById('pager');
+  if (!pg) { pg = document.createElement('nav'); pg.id = 'pager'; pg.className = 'pager'; pg.setAttribute('aria-label', 'Previous and next step'); view.after(pg); }
+  const all = D.STEPS.map((s) => ({ id: s.id, label: s.label })).concat([{ id: 'receipt', label: 'Receipt' }]);
+  const i = all.findIndex((s) => s.id === id);
+  if (i < 0) { pg.hidden = true; pg.innerHTML = ''; return; }
+  const prev = i > 0 ? all[i - 1] : null, next = i < all.length - 1 ? all[i + 1] : null;
+  pg.hidden = false;
+  pg.innerHTML = (prev ? `<button type="button" class="btn secondary" data-go="${prev.id}">← Previous: ${esc(prev.label)}</button>` : '<span></span>')
+    + (next ? `<button type="button" class="btn" data-go="${next.id}">Next: ${esc(next.label)} →</button>` : '');
+  pg.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+}
 function go(id) {
   dockCalc(null);
   if (!S.email) return showStart();
@@ -309,7 +323,7 @@ function go(id) {
   else if (id === 'memo') showMemo();
   else if (id === 'receipt') showReceipt();
   else showSite(siteById(id));
-  renderNav();
+  renderNav(); renderPager(id);
   $('#main').focus({ preventScroll: true });
   window.scrollTo(0, 0);
 }
@@ -319,6 +333,7 @@ function memoHead(done) { return `<div class="memo-head"><span>From <b>${esc(ST.
 
 // ---------- start ----------
 function showStart() {
+  if (document.getElementById('pager')) document.getElementById('pager').hidden = true;
   S.at = 'start';
   const last = store.get(KEY + ':last');
   const lastSaved = last ? store.get(KEY + ':' + D.seedFor(last)) : null;
@@ -423,7 +438,7 @@ function showCheck(step) {
     L.choice = Number(c.value); L.attempts = (L.attempts || 0) + 1;
     const ok = D.judgeQuiz(step.quiz, L.choice).ok;
     fb.className = 'fb ' + (ok ? 'ok' : 'bad'); fb.textContent = q.why[L.choice];
-    if (ok) { markDone(step.id); $('#nextRow').hidden = false; $('#nextBtn').focus(); }
+    if (ok) { markDone(step.id); $('#nextRow').hidden = false; (document.querySelector('#pager [data-go]:not(.secondary)') || $('#nextBtn')).focus(); }
     $('#att').textContent = 'Checks so far: ' + L.attempts;
     saveState();
   });
@@ -611,7 +626,7 @@ function wireSite(s, L) {
       markDone(s.id);
       fb.className = 'fb ok'; fb.innerHTML = '<b>Right.</b> ' + praise(s);
       $('#nextRow').hidden = false; $('#helpRow').hidden = true;
-      $('#nextBtn').focus();
+      (document.querySelector('#pager [data-go]:not(.secondary)') || $('#nextBtn')).focus();
     } else {
       L.fails = (L.fails || 0) + 1;
       fb.className = 'fb bad'; fb.innerHTML = '<b>Not yet.</b> ' + esc(res.msg || 'Check your work and try again.');
@@ -663,11 +678,12 @@ function wrapLines(g, text, maxW, maxLines) {
 async function makeReceiptBlob() {
   const payload = D.makePayload(S.name, S.email, S.log, S.memo);
   const done = doneCount(), pts = D.pointsFor(done);
-  const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 1100;
+  const rowsN = Math.ceil(D.STEPS.length / 5), H = 1000 + rowsN * 92, ny = 430 + rowsN * 92 + 40;
+  const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = H;
   const g = canvas.getContext('2d');
-  g.fillStyle = '#F7F5F0'; g.fillRect(0, 0, 1200, 1100);
-  g.strokeStyle = '#1C6B4A'; g.lineWidth = 6; g.strokeRect(24, 24, 1152, 1052);
-  g.lineWidth = 1.5; g.strokeRect(38, 38, 1124, 1024);
+  g.fillStyle = '#F7F5F0'; g.fillRect(0, 0, 1200, H);
+  g.strokeStyle = '#1C6B4A'; g.lineWidth = 6; g.strokeRect(24, 24, 1152, H - 48);
+  g.lineWidth = 1.5; g.strokeRect(38, 38, 1124, H - 76);
   g.fillStyle = '#1C6B4A'; g.font = 'italic 24px Georgia, serif'; g.fillText(ST.company + ' ' + ST.team + '  ·  Corporate Finance, Unit 5', 80, 100);
   g.fillStyle = '#1B211D'; g.font = '58px Georgia, serif'; g.fillText('The Site Selection Desk', 80, 172);
   g.font = '34px Georgia, serif'; g.fillText(S.name, 80, 236);
@@ -677,21 +693,22 @@ async function makeReceiptBlob() {
   g.fillStyle = '#FFFFFF'; g.font = 'bold 44px Georgia, serif'; g.fillText('Points: ' + pts + ' / ' + D.POINTS, 108, 370);
   g.font = '24px Georgia, serif'; g.textAlign = 'right'; g.fillText(done + ' of ' + D.STEPS.length + ' steps complete · graded on completion', 1092, 366); g.textAlign = 'left';
   // steps
+  const fit = (g, txt, max, px) => { let s = px; do { g.font = 'bold ' + s + 'px Georgia, serif'; s -= 1; } while (g.measureText(txt).width > max && s >= 12); };
   D.STEPS.forEach((s, k) => {
     const col = k % 5, row = Math.floor(k / 5), x = 80 + col * 209, y = 430 + row * 92, l = S.log[s.id];
     g.fillStyle = l.done ? '#E0F2E5' : '#FBE7E4'; g.fillRect(x, y, 197, 76);
-    g.fillStyle = l.done ? '#1C7340' : '#A8261E'; g.font = 'bold 18px Georgia, serif'; g.fillText((l.done ? '✓ ' : '✗ ') + s.label, x + 16, y + 34);
+    g.fillStyle = l.done ? '#1C7340' : '#A8261E'; const tl = (l.done ? '✓ ' : '✗ ') + s.label; fit(g, tl, 175, 18); g.fillText(tl, x + 16, y + 34);
     g.fillStyle = '#5C625D'; g.font = '18px Georgia, serif'; g.fillText(l.done ? 'complete' : 'not finished', x + 16, y + 60);
   });
   // note
-  g.fillStyle = '#1B211D'; g.font = 'bold 24px Georgia, serif'; g.fillText('Note to the VP of Real Estate', 80, 652);
+  g.fillStyle = '#1B211D'; g.font = 'bold 24px Georgia, serif'; g.fillText('Note to the VP of Real Estate', 80, ny);
   g.font = '21px Georgia, serif'; g.fillStyle = '#1B211D';
   const lines = S.memo.trim() ? wrapLines(g, S.memo, 1040, 9) : ['(no note yet)'];
-  lines.forEach((ln, i) => g.fillText(ln, 80, 686 + i * 29));
+  lines.forEach((ln, i) => g.fillText(ln, 80, ny + 34 + i * 29));
   g.fillStyle = '#5C625D'; g.font = '20px Georgia, serif';
-  g.fillText('Issued ' + new Date(payload.issued).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }), 80, 958);
-  g.fillStyle = '#1B211D'; g.font = 'bold 26px monospace'; g.fillText('Verification code  ' + D.shortCode(payload.sum), 80, 996);
-  g.fillStyle = '#5C625D'; g.font = '18px Georgia, serif'; g.fillText('Instructors: enter the points shown above. To spot-check, open ' + VERIFY_URL.replace('https://', ''), 80, 1034);
+  g.fillText('Issued ' + new Date(payload.issued).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }), 80, H - 142);
+  g.fillStyle = '#1B211D'; g.font = 'bold 26px monospace'; g.fillText('Verification code  ' + D.shortCode(payload.sum), 80, H - 104);
+  g.fillStyle = '#5C625D'; g.font = '18px Georgia, serif'; g.fillText('Instructors: enter the points shown above. To spot-check, open ' + VERIFY_URL.replace('https://', ''), 80, H - 66);
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const withText = D.addTextChunk(bytes, D.encodeReceipt(payload));
