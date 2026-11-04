@@ -332,8 +332,8 @@ function showStart() {
     <div class="box">
       <p><b>How this works</b></p>
       <ul>
-        <li>There are ten steps: a worked example, five sites with three one-question checks between them, and a short note to ${esc(ST.vp.split(' ')[0])}.</li>
-        <li><b>This assignment is graded on completion.</b> Finish all ten steps to earn all ${D.POINTS} points (at least five steps earns ${D.POINTS / 2}). A wrong answer never costs points.</li>
+        <li>There are eleven steps: a worked example, five sites with three one-question checks between them, one exam-style question, and a short note to ${esc(ST.vp.split(' ')[0])}.</li>
+        <li><b>This assignment is graded on completion.</b> Finish all eleven steps to earn all ${D.POINTS} points (at least six steps earns ${D.POINTS / 2}). A wrong answer never costs points.</li>
         <li>Check your answers as often as you like. If you get stuck, the help buttons show you the setup with your own numbers.</li>
         <li>A calculator opens next to every site, and the <b>Calculator</b> button at the top of the page brings it back anytime.</li>
         <li>When you finish, download your receipt and upload it to the assignment page.</li>
@@ -402,7 +402,7 @@ function showWalk() {
 }
 
 // ---------- one-question checks (quick wins between sites) ----------
-const CHECK_TITLES = ['Quick win: what is year 0?', 'Quick win: what does NPV tell you?', 'Quick win: when the required return rises'];
+const CHECK_TITLES = ['Quick win: what is year 0?', 'Quick win: what does NPV tell you?', 'Quick win: when the required return rises', 'Exam-style question'];
 const optOrder = (q) => { const hs = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return x; }; return q.options.map((_, j) => j).sort((a, b) => hs(q.q + '|' + a) - hs(q.q + '|' + b)); };
 function showCheck(step) {
   const L = S.log[step.id], q = D.QUIZ[step.quiz], idx = D.STEPS.findIndex((x) => x.id === step.id) + 1;

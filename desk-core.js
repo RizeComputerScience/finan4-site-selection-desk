@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   const APP = 'finan4-u5-site-selection-desk';
-  const VERSION = 3;
+  const VERSION = 4;
   const SALT = 'rize-finan4-desk-v2:c41e07';
   const POINTS = 20;
 
@@ -95,6 +95,13 @@
         'A higher required return shrinks the value of future cash, so the NPV goes down, not up.',
         'The cash flows are the same, but each one is now divided by a bigger number, (1.12)^t instead of (1.08)^t, so the NPV changes.',
         'The cost is paid today and is not discounted. What changes is the value today of the future cash, and that falls.'] },
+    { q: 'A project costs $10,000 today and brings in $6,000 at the end of each of the next two years. At a 10% required return, what is its NPV?',
+      options: ['$413', '$909', '$1,322', '$2,000'],
+      answer: 0,
+      why: ['Right. −$10,000 + $6,000 ÷ 1.10 + $6,000 ÷ 1.10² = −$10,000 + $5,454.55 + $4,958.68 = $413.22. Questions on the exams look like this one.',
+        '$909 discounts both payments by one year. The second $6,000 arrives in year 2, so divide it by 1.10².',
+        '$1,322 discounts the cost as well. The cost is paid today, in year 0, so it counts in full.',
+        '$2,000 ignores the time value of money. Future cash is worth less today, so discount each payment.'] },
   ];
 
   // ---------- site generation ----------
@@ -168,6 +175,7 @@
     { id: 's3', label: 'Site 3' },
     { id: 's4', label: 'Site 4' },
     { id: 's5', label: 'Site 5' },
+    { id: 'q4', label: 'Exam-style question', quiz: 3 },
     { id: 'memo', label: 'Your note' },
   ];
   const MEMO_MIN_WORDS = 30;
@@ -290,7 +298,7 @@
     p.sum = checksum(canonical(p));
     return p;
   }
-  // Matches the assignment's three-level completion rubric: all ten steps = full points, at least half = half, else 0.
+  // Matches the assignment's three-level completion rubric: all steps = full points, at least half = half, else 0.
   function pointsFor(doneCount) { return doneCount >= STEPS.length ? POINTS : doneCount >= STEPS.length / 2 ? POINTS / 2 : 0; }
   function verifyPayload(p) {
     const out = { checksumOk: false, rows: [], done: 0, total: STEPS.length, points: 0, problems: [] };
