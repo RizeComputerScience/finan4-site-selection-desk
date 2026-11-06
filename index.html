@@ -140,6 +140,17 @@ footer{max-width:820px;margin:0 auto;padding:0 1.1rem 3rem;font-size:14px;color:
 .pager{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1.75rem 0 0;padding-top:1.1rem;border-top:1px solid var(--line)}.pager[hidden]{display:none}
 #nextRow{display:none}
 .practice-banner{background:var(--hint-tint);border-left:4px solid var(--hint);padding:.6rem .9rem;border-radius:6px;margin:0 0 1rem}
+/* 2026-11-06 (Samuel's 11/05 desk rules): worked example per site, each answer field under its own question */
+details.example{background:var(--brand-tint);border-left:4px solid var(--brand);border-radius:8px;padding:.55rem 1rem .6rem;margin:1rem 0}
+details.example summary{cursor:pointer;font-weight:700;font-size:16px;color:var(--brand)}
+details.example .ex-body{font-size:16.5px}
+details.example .ex-body p{margin:.3rem 0}
+.part>p:first-child{margin-top:0}
+.part>.field,.part>fieldset,.part>.tw{margin-top:.6rem}
+.part+.part{border-top:1px solid var(--line);padding-top:1rem}
+.part .tw table.cf{margin-top:.2rem}
+table.cf tfoot td[colspan]{font-family:var(--serif);font-size:15px;line-height:1.35}
+table.cf th small{display:block;font-weight:400;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -271,13 +282,14 @@ $('#calcCopy').addEventListener('click', async () => {
 // ---------- state ----------
 let S = { name: '', email: '', sites: [], log: {}, memo: '', at: 'start' };
 function blankLog() { const l = {}; D.STEPS.forEach((s) => { l[s.id] = { done: false, attempts: 0, help: 0 }; }); return l; }
-function saveState() { if (S.practice) return; store.set(KEY + ':' + D.seedFor(S.email), { name: S.name, email: S.email, log: S.log, memo: S.memo, at: S.at }); store.set(KEY + ':last', S.email); }
+function saveState() { if (S.practice) return; store.set(KEY + ':' + D.seedFor(S.email), { name: S.name, email: S.email, log: S.log, memo: S.memo, memoDraft: S.memoDraft, at: S.at }); store.set(KEY + ':last', S.email); }
 function startFor(name, email) {
   S.name = name.trim(); S.email = D.normEmail(email); S.sites = D.buildSites(S.email);
   const saved = store.get(KEY + ':' + D.seedFor(S.email));
   S.log = saved && saved.log ? saved.log : blankLog();
   D.STEPS.forEach((s) => { if (!S.log[s.id]) S.log[s.id] = { done: false, attempts: 0, help: 0 }; });
   S.memo = saved && saved.memo ? saved.memo : '';
+  S.memoDraft = saved && saved.memoDraft != null ? saved.memoDraft : S.memo; // what the box shows; S.memo is what the receipt carries
   if (saved && saved.name && !name.trim()) S.name = saved.name;
   S.at = saved && saved.at ? saved.at : 'walk';
   saveState();
@@ -437,9 +449,10 @@ function showCheck(step) {
     e.preventDefault();
     const c = $('input[name=q]:checked'); const fb = $('#fb');
     if (!c) { fb.className = 'fb bad'; fb.textContent = 'Choose an answer.'; return; }
-    L.choice = Number(c.value); L.attempts = (L.attempts || 0) + 1;
-    const ok = D.judgeQuiz(step.quiz, L.choice).ok;
-    fb.className = 'fb ' + (ok ? 'ok' : 'bad'); fb.textContent = q.why[L.choice];
+    const pick = Number(c.value); L.attempts = (L.attempts || 0) + 1;
+    const ok = D.judgeQuiz(step.quiz, pick).ok;
+    if (ok || !L.done) L.choice = pick; // a finished check keeps its right answer
+    fb.className = 'fb ' + (ok ? 'ok' : 'bad'); fb.textContent = q.why[pick] + (!ok && L.done ? ' Your earlier right answer is still saved.' : '');
     if (ok) { markDone(step.id); $('#nextRow').hidden = false; (document.querySelector('#pager [data-go]:not(.secondary)') || $('#nextBtn')).focus(); }
     $('#att').textContent = 'Checks so far: ' + L.attempts;
     saveState();
@@ -448,24 +461,51 @@ function showCheck(step) {
 }
 
 // ---------- site copy ----------
+// Each site: body (the facts), example (a 2 to 4 line worked example with fixed round numbers that no student's site uses),
+// and its questions, each rendered directly above its own answer field.
 function siteCopy(s) {
   const n = (s.flows || s.bFlows).length - 1;
   switch (s.id) {
     case 's1': return { title: `Site 1: ${s.city}`, place: 'A former bank branch on a busy corner, with the drive-thru lane still in place.', body: `
-      <p>Converting the branch costs <b>${fmt(-s.flows[0])}</b> today. The restaurant should bring in <b>${fmt(s.flows[1])}</b> of cash at the end of each year for ${n} years. Our required return is <b>${pct(s.r)}</b>.</p>
-      <p>Fill in the present value of each year’s cash flow, just like the worked example. The table adds them up and subtracts the cost for you. Then make the call.</p>` };
+      <p>Converting the branch costs <b>${fmt(-s.flows[0])}</b> today. The restaurant should bring in <b>${fmt(s.flows[1])}</b> of cash at the end of each year for ${n} years. Our required return is <b>${pct(s.r)}</b>.</p>`,
+      example: `<p>Year 2 cash of $100,000, required return 5%.</p>
+        <p>Discount factor = 1 ÷ 1.05² = 0.9070.</p>
+        <p>Present value = cash flow × discount factor = $100,000 × 0.9070 = $90,700.</p>
+        <p>NPV = sum of the present values − cost today. Above zero, build; below zero, pass.</p>`,
+      tableQ: `<p><b>1. What is each year’s present value?</b> Type it in the Present value column: cash flow × discount factor. The table adds them up and subtracts the cost for you.</p>`,
+      choiceQ: '2. Should we build this site?' };
     case 's2': return { title: `Site 2: ${s.city}`, place: 'An end unit in a brand-new shopping center that is still signing tenants.', body: `
       <p>Until the rest of the center opens, traffic will be light, so the first two years bring in less cash. It costs <b>${fmt(-s.flows[0])}</b> to build today. Our required return is <b>${pct(s.r)}</b>.</p>
-      <p>Find the NPV and make the call. The present value column is there if you want it: fill it in and the table gives you the NPV.</p>` };
+      <p>The Present value column is optional. Fill it in and the table works out the NPV for you.</p>`,
+      example: `<p>Cost $100,000 today, then $40,000 in year 1 and $80,000 in year 2, required return 5%.</p>
+        <p>Year 1: $40,000 × 0.9524 = $38,096.</p>
+        <p>Year 2: $80,000 × 0.9070 = $72,560.</p>
+        <p>NPV = $38,096 + $72,560 − $100,000 = $10,656. Above zero, so build.</p>`,
+      valueQ: `1. What is this site’s NPV at ${pct(s.r)}?`, choiceQ: '2. Should we build this site?' };
     case 's3': return { title: `Site 3: ${s.city}`, place: 'A ground-floor space across the street from a twelve-screen movie theater.', body: `
       <p>Last year, when our required return was ${pct(s.r0)}, the team valued this site at an NPV of <b>${fmt(s.oldNpv)}</b> and planned to build it. Since then interest rates have gone up, and our investors now expect <b>${pct(s.r)}</b>. The estimates have not changed: it costs <b>${fmt(-s.flows[0])}</b> today and brings in <b>${fmt(s.flows[1])}</b> a year for ${n} years.</p>
-      <p>Recompute the NPV at ${pct(s.r)}. Should we still build it? The discount factors are not filled in this time. In the calculator, the year 2 factor is <code>1/(1+${(s.r).toFixed(2).replace(/0$/, '')})^2</code>.</p>` };
+      <p>The discount factors are not filled in this time. In the calculator, the year 2 factor is <code>1/(1+${(s.r).toFixed(2).replace(/0$/, '')})^2</code>.</p>`,
+      example: `<p>Cost $180,000 today, then $100,000 a year for 2 years.</p>
+        <p>At 5%: $100,000 × 0.9524 + $100,000 × 0.9070 − $180,000 = $5,940.</p>
+        <p>At 15%: $100,000 × 0.8696 + $100,000 × 0.7561 − $180,000 = −$17,430.</p>
+        <p>Same cash, higher required return: the NPV falls, here from above zero to below it.</p>`,
+      valueQ: `1. What is this site’s NPV at ${pct(s.r)}?`, choiceQ: '2. Should we still build it?' };
     case 's4': return { title: `Site 4: two sites, one lease`, place: `Two locations in ${s.city} are competing for the same lease budget, so we can take only one.`, body: `
       <p><b>Site A</b> is a college food court: busy at first, but a competitor opens across the street in year 3 and the lease ends after 4 years. <b>Site B</b> is a highway travel plaza with steady traffic for 6 years. Each costs <b>${fmt(-s.aFlows[0])}</b> today. Our required return is <b>${pct(s.r)}</b>.</p>
-      <p>Site A pays back its cost in ${s.aPayback.toFixed(1)} years, and Site B in ${s.bPayback.toFixed(1)}. The team has already found Site A’s NPV: <b>${fmt(s.aNpv)}</b>. Find Site B’s NPV and pick one.</p>` };
+      <p>Site A pays back its cost in ${s.aPayback.toFixed(1)} years, and Site B in ${s.bPayback.toFixed(1)}. The team has already found Site A’s NPV: <b>${fmt(s.aNpv)}</b>.</p>`,
+      example: `<p>Projects X and Y each cost $100,000 today. The required return is 5%, and we can take only one.</p>
+        <p>X brings in $55,000 a year for 2 years: NPV = $55,000 × (0.9524 + 0.9070) − $100,000 = $2,267.</p>
+        <p>Y brings in $45,000 a year for 3 years: NPV = $45,000 × (0.9524 + 0.9070 + 0.8638) − $100,000 = $22,544.</p>
+        <p>Take the one with the higher NPV: Y.</p>`,
+      valueQ: `1. What is Site B’s NPV at ${pct(s.r)}?`, choiceQ: '2. Which site do we take?' };
     case 's5': return { title: `Site 5: ${s.city}`, place: 'A concourse space at the regional airport, on an 8-year lease.', body: `
       <p>Investors often ask for a site’s <b>break-even rate</b>: the required return at which its NPV is exactly zero. Finance calls it the <b>internal rate of return (IRR)</b>. If a site’s IRR is above the return we require, the site clears the bar.</p>
-      <p>This site costs <b>${fmt(-s.flows[0])}</b> and brings in <b>${fmt(s.flows[1])}</b> a year for ${n} years. Drag the rate and watch the NPV. Which rate is closest to the site’s IRR?</p>` };
+      <p>This site costs <b>${fmt(-s.flows[0])}</b> and brings in <b>${fmt(s.flows[1])}</b> a year for ${n} years. Drag the rate and watch the NPV.</p>`,
+      example: `<p>Cost $150,000 today, then $60,000 in year 1 and $144,000 in year 2. Try a rate of 20%.</p>
+        <p>Year 1: $60,000 ÷ 1.20 = $50,000.</p>
+        <p>Year 2: $144,000 ÷ 1.20² = $100,000.</p>
+        <p>NPV = $50,000 + $100,000 − $150,000 = $0, so the IRR is 20%.</p>`,
+      choiceQ: 'Which rate is closest to this site’s IRR?' };
   }
 }
 function praise(s) {
@@ -483,19 +523,21 @@ function showSite(s) {
   const L = S.log[s.id], m = siteCopy(s), idx = D.STEPS.findIndex((x) => x.id === s.id) + 1;
   let html = `<p class="kicker">Step ${idx} of ${D.STEPS.length} · ${esc(D.STEPS[idx - 1].label)}</p>
     <article class="memo" aria-labelledby="t">${memoHead(L.done)}
-      <h2 id="t">${esc(m.title)}</h2><p class="place">${esc(m.place)}</p>${m.body}`;
-  if (s.kind === 'guided') html += guidedTable(s, L);
+      <h2 id="t">${esc(m.title)}</h2><p class="place">${esc(m.place)}</p>${m.body}
+      <details class="example" open><summary>Worked example</summary><div class="ex-body">${m.example}</div></details>`;
+  // Each question sits right above its own answer field. The calculator sits right under the table the student works in.
   if (s.kind === 'npv') html += scratchTable(s.flows, s.r, s.showFactors, 'Cash flows for this site');
   if (s.kind === 'choose') html += `<div class="pair">${plainTable(s.aFlows, 'Site A: college food court')}${plainTable(s.bFlows, 'Site B: highway travel plaza')}</div>` + scratchTable(s.bFlows, s.r, false, 'Work space for Site B (optional)');
   if (s.kind === 'irr') html += irrBlock();
-  if (s.kind !== 'irr') html += '<div id="calcSlot"></div>';
+  if (s.kind === 'npv' || s.kind === 'choose') html += '<div id="calcSlot"></div>';
   html += `<form class="ask" id="ask" novalidate>`;
-  if (s.kind === 'npv' || s.kind === 'choose') html += `<div><label for="val">${s.kind === 'choose' ? 'NPV of Site B' : s.id === 's3' ? 'NPV at ' + pct(s.r) : 'NPV'}</label>
+  if (s.kind === 'guided') html += `<div class="part">${m.tableQ}${guidedTable(s, L)}<div id="calcSlot"></div></div>`;
+  if (s.kind === 'npv' || s.kind === 'choose') html += `<div class="part"><label for="val">${esc(m.valueQ)}</label>
     <input class="money" id="val" inputmode="decimal" autocomplete="off" placeholder="$0" value="${L.value ? esc(L.value) : ''}" aria-describedby="valHelp">
-    <p class="field-help" id="valHelp">Round to the nearest dollar. Start a negative amount with a minus sign. Answers within about 0.1% count as correct.</p></div>`;
-  if (s.decision === 'build' || s.decision === 'pass') html += radios('dec', 'Your call', [['build', 'Build it'], ['pass', 'Pass on it']], L.choice);
-  if (s.kind === 'choose') html += radios('dec', 'Which site do we take?', [['A', 'Site A'], ['B', 'Site B']], L.choice);
-  if (s.kind === 'irr') html += radios('dec', 'The rate closest to this site’s IRR', s.options.map((o) => [String(o), o + '%']), L.choice);
+    <p class="field-help" id="valHelp">Round to the nearest dollar. Start a negative amount with a minus sign.</p></div>`;
+  if (s.decision === 'build' || s.decision === 'pass') html += `<div class="part">${radios('dec', esc(m.choiceQ), [['build', 'Build it'], ['pass', 'Pass on it']], L.choice)}</div>`;
+  if (s.kind === 'choose') html += `<div class="part">${radios('dec', esc(m.choiceQ), [['A', 'Site A'], ['B', 'Site B']], L.choice)}</div>`;
+  if (s.kind === 'irr') html += `<div class="part">${radios('dec', esc(m.choiceQ), s.options.map((o) => [String(o), o + '%']), L.choice)}</div>`;
   html += `<div class="actions"><button class="btn" type="submit">Check</button>
       <span class="attempts" id="att">${L.attempts ? 'Checks so far: ' + L.attempts : ''}</span></div>
     <div class="fb" id="fb" aria-live="polite"></div>
@@ -520,11 +562,11 @@ function guidedTable(s, L) {
     return `<tr><td>${t}${t === 0 ? '<span class="today"> (today)</span>' : ''}</td><td class="${cf < 0 ? 'neg' : ''}">${fmt(cf)}</td><td>${f4(f)}</td><td>${inp}</td></tr>`;
   }).join('');
   return `<div class="tw"><table class="cf"><caption>Cash flows for this site, required return ${pct(s.r)}</caption>
-    <thead><tr><th scope="col">Year</th><th scope="col">Cash flow</th><th scope="col">Discount factor</th><th scope="col">Present value</th></tr></thead>
+    <thead><tr><th scope="col">Year</th><th scope="col">Cash flow</th><th scope="col">Discount factor</th><th scope="col">Present value<small>cash flow × discount factor</small></th></tr></thead>
     <tbody>${body}</tbody>
-    <tfoot><tr class="total"><td colspan="3">Value today of the cash coming in (years 1 to ${s.flows.length - 1})</td><td id="inTotal">$0</td></tr>
+    <tfoot><tr class="total"><td colspan="3">Value today of the cash coming in (sum of the present values, years 1 to ${s.flows.length - 1})</td><td id="inTotal">$0</td></tr>
       <tr><td colspan="3">Cost today (year 0)</td><td class="neg">${fmt(s.flows[0])}</td></tr>
-      <tr class="total hl"><td colspan="3"><b>NPV</b></td><td id="npvTotal"><b>$0</b></td></tr></tfoot></table></div>
+      <tr class="total hl"><td colspan="3"><b>NPV</b> = value today of the cash coming in − cost today</td><td id="npvTotal"><b>$0</b></td></tr></tfoot></table></div>
     <p class="small" id="y0note">Year 0 is filled in for you: the cost is paid today, its factor is 1, so its present value is the full cost.</p>`;
 }
 function plainTable(flows, caption) {
@@ -537,8 +579,8 @@ function scratchTable(flows, r, showFactors, caption) {
       <td>${t === 0 ? `<input value="${fmt(cf).replace('−', '-')}" readonly aria-label="Present value, year 0">` : `<label class="sr-only" for="sp${t}">Present value, year ${t} (optional)</label><input id="sp${t}" class="spin" inputmode="decimal" autocomplete="off">`}</td></tr>`;
   }).join('');
   return `<div class="tw"><table class="cf"><caption>${esc(caption)}, required return ${pct(r)}${showFactors ? '' : '. Discount factors are not shown this time: find them with the calculator.'}</caption>
-    <thead><tr><th scope="col">Year</th><th scope="col">Cash flow</th><th scope="col">Discount factor</th><th scope="col">Present value (optional)</th></tr></thead>
-    <tbody>${rows}</tbody><tfoot><tr class="total hl"><td colspan="3">NPV from your present values</td><td><span id="spTotal">$0</span></td></tr></tfoot></table></div>
+    <thead><tr><th scope="col">Year</th><th scope="col">Cash flow</th><th scope="col">Discount factor</th><th scope="col">Present value (optional)<small>cash flow × discount factor</small></th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr class="total hl"><td colspan="3">NPV = sum of the present values, including the year 0 cost</td><td><span id="spTotal">$0</span></td></tr></tfoot></table></div>
     <div class="actions"><button class="btn small secondary" type="button" id="useTotal">Use this NPV in the answer box</button></div>`;
 }
 function irrBlock() {
@@ -558,6 +600,7 @@ function helpText(s, level) {
 function wireSite(s, L) {
   const form = $('#ask');
   const fb = $('#fb');
+  const rowsNow = () => (s.kind === 'guided' ? [null, ...$$('.pvin').map((x) => x.value)] : null);
   // guided table: live totals
   if (s.kind === 'guided') {
     const upd = () => {
@@ -565,7 +608,8 @@ function wireSite(s, L) {
       $$('.pvin').forEach((x) => { const v = D.parseMoney(x.value); if (isFinite(v)) inS += v; x.classList.remove('good', 'wrong'); const mk = $('#mk' + x.dataset.t); if (mk) mk.textContent = ''; });
       $('#inTotal').textContent = fmt(inS);
       $('#npvTotal').innerHTML = '<b>' + fmt(inS + s.flows[0]) + '</b>';
-      L.rows = [null, ...$$('.pvin').map((x) => x.value)]; saveState();
+      // Once the site is done, edits never overwrite the rows saved for the receipt (only a right Check does).
+      if (!L.done) { L.rows = rowsNow(); saveState(); }
     };
     $$('.pvin').forEach((x) => x.addEventListener('input', upd)); upd();
   }
@@ -614,9 +658,11 @@ function wireSite(s, L) {
     e.preventDefault();
     const val = $('#val') ? $('#val').value : null;
     const ch = (form.querySelector('input[name=dec]:checked') || {}).value || null;
-    const entry = { value: val, choice: ch, rows: L.rows };
-    const res = D.judgeSite(s, entry);
-    L.attempts = (L.attempts || 0) + 1; L.value = val; L.choice = ch;
+    const rows = rowsNow();
+    const res = D.judgeSite(s, { value: val, choice: ch, rows: rows || L.rows });
+    L.attempts = (L.attempts || 0) + 1;
+    // A finished site keeps its right answer: a later wrong Check never overwrites what the receipt carries.
+    if (res.ok || !L.done) { L.value = val; L.choice = ch; if (rows) L.rows = rows; }
     if (s.kind === 'guided' && res.rowRes) {
       res.rowRes.forEach((rr, t) => {
         if (!t) return; const x = $('#pv' + t), mk = $('#mk' + t);
@@ -631,7 +677,7 @@ function wireSite(s, L) {
       (document.querySelector('#pager [data-go]:not(.secondary)') || $('#nextBtn')).focus();
     } else {
       L.fails = (L.fails || 0) + 1;
-      fb.className = 'fb bad'; fb.innerHTML = '<b>Not yet.</b> ' + esc(res.msg || 'Check your work and try again.');
+      fb.className = 'fb bad'; fb.innerHTML = '<b>Not yet.</b> ' + esc(res.msg || 'Check your work and try again.') + (L.done ? ' Your earlier right answer is still saved.' : '');
       renderHelp();
     }
     $('#att').textContent = 'Checks so far: ' + L.attempts;
@@ -650,20 +696,22 @@ function showMemo() {
       <p>Thanks for working through these. I am sending a summary to our CFO on Friday. Write me a short note I can forward: which sites would you build, which would you pass on, and why? One thing the CFO always asks: why not just pick the site that pays back fastest?</p>
       <form id="mf" novalidate>
         <label for="memoText">Your note to ${esc(ST.vp.split(' ')[0])}</label>
-        <textarea id="memoText" aria-describedby="memoHelp">${esc(S.memo)}</textarea>
+        <textarea id="memoText" aria-describedby="memoHelp">${esc(S.memoDraft != null ? S.memoDraft : S.memo)}</textarea>
         <p class="field-help" id="memoHelp">Write 3 to 5 sentences (at least ${D.MEMO_MIN_WORDS} words) in your own words. This step is graded on completion, and the note prints on your receipt. <span class="wc" id="wc"></span></p>
         <div class="actions"><button class="btn" type="submit">Save my note</button></div>
         <div class="fb" id="fb" aria-live="polite"></div>
         <div class="actions" id="nextRow" ${L.done ? '' : 'hidden'}><button class="btn" type="button" id="nextBtn">Go to your receipt</button></div>
       </form></article>`;
   const ta = $('#memoText');
-  const wc = () => { const n = D.wordCount(ta.value); $('#wc').textContent = n + (n === 1 ? ' word' : ' words') + ' so far.'; };
-  ta.addEventListener('input', () => { S.memo = ta.value; saveState(); wc(); }); wc();
+  const wc = () => { const n = D.wordCount(ta.value); $('#wc').textContent = n + (n === 1 ? ' word' : ' words') + ' so far.' + (L.done && ta.value !== S.memo ? ` Your saved note stays on your receipt until this one has at least ${D.MEMO_MIN_WORDS} words.` : ''); };
+  // Once the note is done, a shortened draft never replaces the saved note on the receipt.
+  const keep = () => { S.memoDraft = ta.value; if (!L.done || D.judgeMemo(ta.value).ok) S.memo = ta.value; };
+  ta.addEventListener('input', () => { keep(); saveState(); wc(); }); wc();
   $('#mf').addEventListener('submit', (e) => {
-    e.preventDefault(); S.memo = ta.value;
-    const r = D.judgeMemo(S.memo); const fb = $('#fb');
-    if (r.ok) { markDone('memo'); fb.className = 'fb ok'; fb.innerHTML = '<b>Saved.</b> Your note will print on your receipt.'; $('#nextRow').hidden = false; }
-    else { fb.className = 'fb bad'; fb.textContent = `Your note has ${r.words} words. Write at least ${D.MEMO_MIN_WORDS}: name the sites you would build and the ones you would pass on, and say why.`; }
+    e.preventDefault(); keep();
+    const r = D.judgeMemo(ta.value); const fb = $('#fb');
+    if (r.ok) { S.memo = ta.value; markDone('memo'); fb.className = 'fb ok'; fb.innerHTML = '<b>Saved.</b> Your note will print on your receipt.'; $('#nextRow').hidden = false; wc(); }
+    else { fb.className = 'fb bad'; fb.textContent = `Your note has ${r.words} words. Write at least ${D.MEMO_MIN_WORDS}: name the sites you would build and the ones you would pass on, and say why.` + (L.done ? ' Your earlier note is still saved.' : ''); }
     saveState();
   });
   $('#nextBtn').addEventListener('click', () => go('receipt'));
