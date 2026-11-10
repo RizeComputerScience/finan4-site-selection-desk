@@ -35,8 +35,7 @@ header.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1p
 .brand b{font-style:normal;color:var(--brand);font-weight:700}
 .btn-quiet{font:15px var(--serif);background:none;border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:.3rem .7rem;cursor:pointer}
 .btn-quiet[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.btn-calc{font:700 15px var(--serif);background:var(--brand);color:var(--brand-ink);border:0;border-radius:6px;padding:.4rem .85rem;cursor:pointer}
-aside.calc.inline{position:static;width:auto;max-width:30rem;box-shadow:none;margin:1.2rem 0 .4rem;border-color:var(--brand)}
+.btn-calc{text-decoration:none;display:inline-block;font:700 15px var(--serif);background:var(--brand);color:var(--brand-ink);border:0;border-radius:6px;padding:.4rem .85rem;cursor:pointer}
 nav.steps{max-width:820px;margin:0 auto;padding:0 1.1rem .55rem;overflow-x:auto}
 nav.steps ol{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
 nav.steps button{font:14px var(--serif);border:1.5px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:999px;padding:.2rem .7rem;cursor:pointer}
@@ -125,17 +124,9 @@ ul.check .st{font:500 14px var(--mono);min-width:5.5rem}
 ul.check .st.ok{color:var(--ok)}ul.check .st.no{color:var(--bad)}
 .points{font:400 44px/1 var(--display);margin:.2rem 0 .6rem}
 .wc{font-size:14px;color:var(--muted)}
-/* calculator */
-aside.calc{position:fixed;right:14px;bottom:14px;z-index:8;width:min(330px,calc(100vw - 28px));background:var(--surface);border:1.5px solid var(--line-strong);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18);padding:.8rem}
-aside.calc h2{font:700 16px var(--serif);margin:0}
-.calc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
-.calc input{width:100%;font:500 17px var(--mono);padding:.45rem .55rem;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--bg);color:var(--ink)}
-.calc-out{font:500 20px var(--mono);min-height:1.6em;margin:.4rem 0;text-align:right;word-break:break-all}
-.calc-err{font-size:14px;color:var(--bad);min-height:1.2em}
-.keys{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
-.keys button{font:500 16px var(--mono);padding:.45rem 0;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer}
-.keys button.op{background:var(--brand-tint)}
-.keys button.eq{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+/* calculator: a link to Desmos */
+.calc-strip{margin:1.1rem 0 .4rem;padding:.6rem .8rem;border-left:4px solid var(--brand);background:var(--panel);border-radius:0 8px 8px 0}
+.calc-strip .small{margin:.45rem 0 0}
 footer{max-width:820px;margin:0 auto;padding:0 1.1rem 3rem;font-size:14px;color:var(--muted)}
 .pager{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1.75rem 0 0;padding-top:1.1rem;border-top:1px solid var(--line)}.pager[hidden]{display:none}
 #nextRow{display:none}
@@ -158,7 +149,7 @@ table.cf th small{display:block;font-weight:400;color:var(--muted)}
 <header class="bar">
   <div class="bar-in">
     <div class="brand" id="brand"></div>
-    <button class="btn-calc" id="calcBtn" type="button" aria-pressed="false" aria-controls="calc"><span aria-hidden="true">🧮</span> Calculator</button>
+    <a class="btn-calc desmos-open" id="calcBtn" href="https://www.desmos.com/scientific" target="desmos" rel="noopener">Desmos calculator<span class="sr-only"> (opens in a new window)</span></a>
     <button class="btn-quiet" id="themeBtn" type="button" aria-pressed="false">Dark mode</button>
   </div>
   <nav class="steps" aria-label="Steps"><ol id="stepNav"></ol></nav>
@@ -167,16 +158,6 @@ table.cf th small{display:block;font-weight:400;color:var(--muted)}
 <main id="main" tabindex="-1">
   <div id="view"></div>
 </main>
-<aside class="calc" id="calc" hidden aria-labelledby="calcTitle">
-  <div class="calc-top"><h2 id="calcTitle">Calculator</h2><button class="btn-quiet" type="button" id="calcClose">Close</button></div>
-  <label class="sr-only" for="calcIn">Expression</label>
-  <input id="calcIn" autocomplete="off" spellcheck="false" placeholder="330000/(1.08)^5">
-  <p class="calc-out" id="calcOut" aria-live="polite"></p>
-  <p class="calc-err" id="calcErr"></p>
-  <div class="keys" id="keys"></div>
-  <p class="small" style="margin:.5rem 0 0">Type or tap. <b>^</b> raises to a power, so 1/(1.08)^5 is the year 5 discount factor at 8%. Prefer Desmos? <a href="https://www.desmos.com/scientific" target="_blank" rel="noopener">Open the Desmos scientific calculator</a> in a new tab.</p>
-  <div class="actions" style="margin-top:.4rem"><button class="btn small secondary" type="button" id="calcCopy">Copy the result</button></div>
-</aside>
 <footer><p>Corporate Finance, Unit 5. Your progress is saved in this browser.</p></footer>
 <div class="sr-only" aria-live="polite" id="announce"></div>
 <script src="desk-core.js"></script>
@@ -235,49 +216,22 @@ function setTheme(t) {
 setTheme(store.get(KEY + ':theme') || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 themeBtn.addEventListener('click', () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
 
-// ---------- calculator ----------
-const calcEl = $('#calc'), calcIn = $('#calcIn'), calcOut = $('#calcOut'), calcErr = $('#calcErr'), calcBtn = $('#calcBtn');
-let lastCalc = null;
-function openCalc(show) {
-  calcEl.hidden = !show; calcBtn.setAttribute('aria-pressed', String(show));
-  if (show) { if (calcEl.classList.contains('inline')) calcEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); calcIn.focus({ preventScroll: true }); }
+// ---------- calculator: Desmos (Samuel, 11/10) ----------
+// The Desmos scientific calculator opens in its own window beside the desk; the in-page keypad was retired.
+// Embedding Desmos inside the page needs a paid licence; linking out is free. If the popup is blocked, the link opens a tab.
+const DESMOS = 'https://www.desmos.com/scientific';
+function openDesmos(e) {
+  const W = 440, sc = window.screen || {}, aw = sc.availWidth || 1280, ah = sc.availHeight || 800;
+  const left = Math.max(0, (sc.availLeft || 0) + aw - W), top = sc.availTop || 0;
+  let w = null; try { w = window.open(DESMOS, 'desmos', `popup,width=${W},height=${Math.min(ah, 760)},left=${left},top=${top}`); } catch (err) { w = null; }
+  if (w) { e.preventDefault(); try { w.opener = null; w.focus(); } catch (err) { /* cross-origin */ } }
 }
+document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a.desmos-open'); if (a) openDesmos(e); });
 function dockCalc(slot) {
-  // On site steps the calculator sits open inside the page; elsewhere it floats and starts closed.
-  if (slot) { slot.appendChild(calcEl); calcEl.classList.add('inline'); calcEl.hidden = false; calcBtn.setAttribute('aria-pressed', 'true'); }
-  else { document.body.appendChild(calcEl); calcEl.classList.remove('inline'); calcEl.hidden = true; calcBtn.setAttribute('aria-pressed', 'false'); }
+  if (!slot) return;
+  slot.innerHTML = `<div class="calc-strip"><a class="btn small secondary desmos-open" href="${DESMOS}" target="desmos" rel="noopener">Open the Desmos calculator<span class="sr-only"> (opens in a new window)</span></a>
+    <p class="small">For example, 330000/(1.08)^5 is $330,000 in year 5 brought back at 8%. In Desmos, typing <b>/</b> starts a fraction, and everything you type next goes under the line until you press <b>→</b>.</p></div>`;
 }
-calcBtn.addEventListener('click', () => openCalc(calcEl.classList.contains('inline') ? true : calcEl.hidden));
-$('#calcClose').addEventListener('click', () => { openCalc(false); calcBtn.focus(); });
-function runCalc() {
-  const r = D.calc(calcIn.value);
-  if (!calcIn.value.trim()) { calcOut.textContent = ''; calcErr.textContent = ''; lastCalc = null; return; }
-  if (r.ok) { lastCalc = r.value; calcOut.textContent = '= ' + r.value.toLocaleString('en-US', { maximumFractionDigits: 6 }); calcErr.textContent = ''; }
-  else { lastCalc = null; calcErr.textContent = r.err; }
-}
-calcIn.addEventListener('input', runCalc);
-calcIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (lastCalc != null) { calcIn.value = String(+lastCalc.toFixed(6)); runCalc(); } } });
-const KEYS = ['7', '8', '9', '(', ')', '4', '5', '6', '×', '÷', '1', '2', '3', '+', '−', '0', '.', '^', '⌫', '=', 'C'];
-KEYS.forEach((k) => {
-  const b = document.createElement('button'); b.type = 'button'; b.textContent = k;
-  if ('×÷+−^()'.includes(k)) b.className = 'op';
-  if (k === '=') b.className = 'eq';
-  b.setAttribute('aria-label', { '×': 'times', '÷': 'divided by', '−': 'minus', '^': 'to the power of', '⌫': 'delete', 'C': 'clear', '=': 'equals' }[k] || k);
-  b.addEventListener('click', () => {
-    if (k === 'C') calcIn.value = '';
-    else if (k === '⌫') calcIn.value = calcIn.value.slice(0, -1);
-    else if (k === '=') { if (lastCalc != null) calcIn.value = String(+lastCalc.toFixed(6)); }
-    else calcIn.value += k;
-    runCalc();
-  });
-  $('#keys').appendChild(b);
-});
-$('#calcCopy').addEventListener('click', async () => {
-  if (lastCalc == null) return;
-  const txt = String(Math.round(lastCalc * 10000) / 10000);
-  try { await navigator.clipboard.writeText(txt); $('#calcCopy').textContent = 'Copied ' + txt; } catch (e) { $('#calcCopy').textContent = txt; }
-  setTimeout(() => { $('#calcCopy').textContent = 'Copy the result'; }, 1800);
-});
 
 // ---------- state ----------
 let S = { name: '', email: '', sites: [], log: {}, memo: '', at: 'start' };
@@ -328,7 +282,6 @@ function renderPager(id) {
   pg.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
 }
 function go(id) {
-  dockCalc(null);
   if (!S.email) return showStart();
   S.at = id; saveState();
   if (id === 'walk') showWalk();
@@ -364,7 +317,7 @@ function showStart() {
         <li>There are eleven steps: a worked example, five sites with three one-question checks between them, one exam-style question, and a short note to ${esc(ST.vp.split(' ')[0])}.</li>
         <li><b>This assignment is graded on completion.</b> Finish all eleven steps to earn all ${D.POINTS} points (at least six steps earns ${D.POINTS / 2}). A wrong answer never costs points.</li>
         <li>Check your answers as often as you like. If you get stuck, the help buttons show you the setup with your own numbers.</li>
-        <li>A calculator opens next to every site, and the <b>Calculator</b> button at the top of the page brings it back anytime.</li>
+        <li>The <b>Desmos calculator</b> button at the top of the page opens a calculator in a window beside the desk. Keep it open while you work.</li>
         <li>When you finish, download your receipt and upload it to the assignment page.</li>
       </ul>
     </div>
@@ -484,7 +437,7 @@ function siteCopy(s) {
       valueQ: `1. What is this site’s NPV at ${pct(s.r)}?`, choiceQ: '2. Should we build this site?' };
     case 's3': return { title: `Site 3: ${s.city}`, place: 'A ground-floor space across the street from a twelve-screen movie theater.', body: `
       <p>Last year, when our required return was ${pct(s.r0)}, the team valued this site at an NPV of <b>${fmt(s.oldNpv)}</b> and planned to build it. Since then interest rates have gone up, and our investors now expect <b>${pct(s.r)}</b>. The estimates have not changed: it costs <b>${fmt(-s.flows[0])}</b> today and brings in <b>${fmt(s.flows[1])}</b> a year for ${n} years.</p>
-      <p>The discount factors are not filled in this time. In the calculator, the year 2 factor is <code>1/(1+${(s.r).toFixed(2).replace(/0$/, '')})^2</code>.</p>`,
+      <p>The discount factors are not filled in this time. In Desmos, the year 2 factor is <code>1/(1+${(s.r).toFixed(2).replace(/0$/, '')})^2</code>.</p>`,
       example: `<p>Cost $180,000 today, then $100,000 a year for 2 years.</p>
         <p>At 5%: $100,000 × 0.9524 + $100,000 × 0.9070 − $180,000 = $5,940.</p>
         <p>At 15%: $100,000 × 0.8696 + $100,000 × 0.7561 − $180,000 = −$17,430.</p>
@@ -578,7 +531,7 @@ function scratchTable(flows, r, showFactors, caption) {
     return `<tr><td>${t}${t === 0 ? '<span class="today"> (today)</span>' : ''}</td><td class="${cf < 0 ? 'neg' : ''}">${fmt(cf)}</td><td>${showFactors ? f4(f) : ''}</td>
       <td>${t === 0 ? `<input value="${fmt(cf).replace('−', '-')}" readonly aria-label="Present value, year 0">` : `<label class="sr-only" for="sp${t}">Present value, year ${t} (optional)</label><input id="sp${t}" class="spin" inputmode="decimal" autocomplete="off">`}</td></tr>`;
   }).join('');
-  return `<div class="tw"><table class="cf"><caption>${esc(caption)}, required return ${pct(r)}${showFactors ? '' : '. Discount factors are not shown this time: find them with the calculator.'}</caption>
+  return `<div class="tw"><table class="cf"><caption>${esc(caption)}, required return ${pct(r)}${showFactors ? '' : '. Discount factors are not shown this time: find them in Desmos.'}</caption>
     <thead><tr><th scope="col">Year</th><th scope="col">Cash flow</th><th scope="col">Discount factor</th><th scope="col">Present value (optional)<small>cash flow × discount factor</small></th></tr></thead>
     <tbody>${rows}</tbody><tfoot><tr class="total hl"><td colspan="3">NPV = sum of the present values, including the year 0 cost</td><td><span id="spTotal">$0</span></td></tr></tfoot></table></div>
     <div class="actions"><button class="btn small secondary" type="button" id="useTotal">Use this NPV in the answer box</button></div>`;
