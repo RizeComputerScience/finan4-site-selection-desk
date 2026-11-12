@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Check Site Selection Desk Receipts</title>
+<title>Check Desk Receipts</title>
 <style>
 :root{color-scheme:light dark;--bg:#F7F5F0;--surface:#fff;--ink:#1B211D;--muted:#5C625D;--line:#D9D4C8;--ok:#1C7340;--ok-tint:#E0F2E5;--bad:#A8261E;--bad-tint:#FBE7E4;--brand:#1C6B4A}
 @media (prefers-color-scheme:dark){:root{--bg:#121815;--surface:#18201C;--ink:#E9EEEA;--muted:#AEBAB3;--line:#2F3B35;--ok:#7DD49A;--ok-tint:#173324;--bad:#FF8D84;--bad-tint:#42201E;--brand:#7DD49A}}
@@ -25,18 +25,21 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:14px}
 </head>
 <body>
 <main>
-  <h1>Check Site Selection Desk receipts</h1>
-  <p>This page is for instructors. The Site Selection Desk is graded on completion: the points printed in the colored box on each receipt are the grade, and you can enter them as shown. Use this page to spot-check. Add one or more receipt files (PNG) that students uploaded; for each one, the page rebuilds that student's numbers from the email on the receipt and re-checks every step from scratch, without trusting the image.</p>
-  <p class="note"><b>Points (the assignment rubric):</b> 20 for all eleven steps verified, 10 for six to ten, 0 for fewer. Nothing leaves your computer; the files are read in this browser only.</p>
+  <h1 id="vt">Check desk receipts</h1>
+  <p>This page is for instructors. The desk is graded on completion: the points printed in the colored box on each receipt are the grade, and you can enter them as shown. Use this page to spot-check. Add one or more receipt files (PNG) that students uploaded; for each one, the page rebuilds that student's numbers from the email on the receipt and re-checks every step from scratch, without trusting the image.</p>
+  <p class="note"><b>Points (the assignment rubric):</b> full points for every step verified, half for at least half the steps, 0 for fewer. Nothing leaves your computer; the files are read in this browser only.</p>
   <div class="drop" id="drop">
     <p><label for="files"><b>Choose receipt files</b></label> or drop them here.</p>
     <input type="file" id="files" accept="image/png" multiple>
   </div>
   <div aria-live="polite" id="out"></div>
 </main>
-<script src="desk-core.js"></script>
+<script>window.DESK_NO_UI = true;</script>
+<script src="config.js"></script>
+<script src="desk-engine.js"></script>
 <script>
 (function(){
+const Desk=DeskEngine.make(window.DESK); document.getElementById('vt').textContent='Check '+DESK.story.title+' receipts'; document.title=document.getElementById('vt').textContent;
 const out=document.getElementById('out');
 const rows=[];
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -44,7 +47,7 @@ async function handle(files){
   for(const f of files){
     const bytes=new Uint8Array(await f.arrayBuffer());
     const text=Desk.readTextChunk(bytes);
-    if(!text){rows.push({file:f.name,error:'No receipt data found. This is not a receipt from the Site Selection Desk, or the image was re-saved (a screenshot or an edited copy loses the data).'});continue;}
+    if(!text){rows.push({file:f.name,error:'No receipt data found. This is not a receipt from this desk, or the image was re-saved (a screenshot or an edited copy loses the data).'});continue;}
     const p=Desk.decodeReceipt(text);
     if(!p){rows.push({file:f.name,error:'The receipt data could not be read.'});continue;}
     const v=Desk.verifyPayload(p);
@@ -53,13 +56,13 @@ async function handle(files){
   render();
 }
 function render(){
-  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Student</th><th scope="col">Verified steps</th><th scope="col">Points (of 20)</th><th scope="col">Checks</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th scope="col">File</th><th scope="col">Student</th><th scope="col">Verified steps</th><th scope="col">Points</th><th scope="col">Checks</th></tr></thead><tbody>';
   for(const r of rows){
     if(r.error){h+=`<tr><td>${esc(r.file)}</td><td colspan="4" class="bad">${esc(r.error)}</td></tr>`;continue;}
     const pts=r.v.points;
     const flags=r.v.problems.length?`<span class="bad">${r.v.problems.map(esc).join('<br>')}</span>`:'<span class="ok">Receipt is intact and every completed step checks out.</span>';
     const att=r.v.rows.map(x=>`${esc(x.label)} ${x.verified?'✓':'–'}${x.attempts?' ('+x.attempts+(x.help?', help '+x.help:'')+')':''}`).join('<br>');
-    h+=`<tr><td>${esc(r.file)}</td><td>${esc(r.p.name)}<br><code>${esc(r.p.email)}</code><br><small>Issued ${esc(new Date(r.p.issued).toLocaleString())}, code ${esc(Desk.shortCode(r.p.sum||'000000000000'))}</small></td><td>${r.v.done} of ${r.v.total}<br><small>${att}</small></td><td>${pts}</td><td>${flags}${r.p.memo?`<details><summary>Note to the VP</summary><p>${esc(r.p.memo)}</p></details>`:''}</td></tr>`;
+    h+=`<tr><td>${esc(r.file)}</td><td>${esc(r.p.name)}<br><code>${esc(r.p.email)}</code><br><small>Issued ${esc(new Date(r.p.issued).toLocaleString())}, code ${esc(Desk.shortCode(r.p.sum||'000000000000'))}</small></td><td>${r.v.done} of ${r.v.total}<br><small>${att}</small></td><td>${pts}</td><td>${flags}${r.p.memo?`<details><summary>Student's note</summary><p>${esc(r.p.memo)}</p></details>`:''}</td></tr>`;
   }
   h+='</tbody></table><p><small>In the step list, the numbers in parentheses are how many times the student pressed Check, and the help level they opened (1 = first row shown, 2 = every row shown). Help never reduces points.</small></p>';
   out.innerHTML=h;
