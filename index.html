@@ -229,8 +229,7 @@ function openDesmos(e) {
 document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a.desmos-open'); if (a) openDesmos(e); });
 function dockCalc(slot) {
   if (!slot) return;
-  slot.innerHTML = `<div class="calc-strip"><a class="btn small secondary desmos-open" href="${DESMOS}" target="desmos" rel="noopener">Open the Desmos calculator<span class="sr-only"> (opens in a new window)</span></a>
-    <p class="small">For example, 330000/(1.08)^5 is $330,000 in year 5 brought back at 8%. In Desmos, typing <b>/</b> starts a fraction, and everything you type next goes under the line until you press <b>→</b>.</p></div>`;
+  slot.innerHTML = `<div class="calc-strip"><a class="btn small secondary desmos-open" href="${DESMOS}" target="desmos" rel="noopener">Open the Desmos calculator<span class="sr-only"> (opens in a new window)</span></a></div>`;
 }
 
 // ---------- state ----------
@@ -296,7 +295,7 @@ function go(id) {
 }
 function nextId(id) { const i = D.STEPS.findIndex((s) => s.id === id); return i < D.STEPS.length - 1 ? D.STEPS[i + 1].id : 'receipt'; }
 function nextLabel(id) { const n = nextId(id); return n === 'receipt' ? 'Go to your receipt' : 'Next: ' + D.STEPS.find((s) => s.id === n).label; }
-function memoHead(done) { return `<div class="memo-head"><span>From <b>${esc(ST.vp)}</b>, ${esc(ST.vpTitle)}</span>${done ? '<span class="stamp">Done</span>' : ''}</div>`; }
+function memoHead(done) { return done ? '<div class="memo-head"><span></span><span class="stamp">Done</span></div>' : ''; }  // sender line cut 2026-11-12
 
 // ---------- start ----------
 function showStart() {
