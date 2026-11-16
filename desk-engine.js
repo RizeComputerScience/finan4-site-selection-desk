@@ -1,6 +1,6 @@
 /* Desk engine: the reusable shell for Rize "desk" minigames (FINAN IV pattern, 2026-11-02).
    A unit supplies window.DESK (config.js); this file supplies everything else: seeded numbers, the start
-   form (email twice), the worked example stepper, one-question checks, task steps with row checks and a
+   screen (a random desk code; no name or email, Rize rule 2026-11-16), the worked example stepper, one-question checks, task steps with row checks and a
    help ladder, a Desmos calculator link, the note, the completion-graded PNG receipt, and verification.
    Design rules: coursedev/process/standards/interactive-assignments.md. Reference unit: FINAN IV Unit 5.
    No dependencies. Works with or without a DOM (Node can load it for tests and for the verifier).
@@ -27,6 +27,13 @@
   function fnv1a(str) { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
   function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const normEmail = (e) => String(e || '').trim().toLowerCase();
+  // Desk code: the only identity a desk has (2026-11-16: pages never ask for a name, school email or any other identifier).
+  // 8 random characters, kept in this browser and printed on the receipt; Learn already knows who uploaded the receipt.
+  const CODE_ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const fmtCode = (c) => { const n = normCode(c); return n.length === 8 ? n.slice(0, 4) + '-' + n.slice(4) : n; };
+  const validCode = (c) => new RegExp('^[' + CODE_ABC + ']{8}$').test(normCode(c));
+  function newCode() { const a = new Uint32Array(8); (root.crypto || { getRandomValues: (x) => { for (let i = 0; i < x.length; i++) x[i] = Math.floor(Math.random() * 4294967296); return x; } }).getRandomValues(a); return [...a].map((x) => CODE_ABC[x % CODE_ABC.length]).join(''); }
   const df = (r, t) => 1 / Math.pow(1 + r, t);
   const npv = (r, flows) => flows.reduce((s, cf, t) => s + cf * df(r, t), 0);
   const annuityFactor = (r, n) => (1 - Math.pow(1 + r, -n)) / r;
@@ -122,20 +129,20 @@
     }).join('');
     return `<div class="tw"><table class="cf ladder${opts.filled ? ' filled' : ''}">${opts.caption ? `<caption>${opts.caption}</caption>` : ''}<thead><tr><th scope="col">Line</th><th scope="col">Calculation</th><th scope="col">Result</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
-  const h = { fnv1a, mulberry32, normEmail, df, npv, annuityFactor, pick, between, round, pct, money, near, wordCount, parseMoney, judgeNumber, calc, ladder };
+  const h = { fnv1a, mulberry32, normEmail, normCode, fmtCode, validCode, newCode, df, npv, annuityFactor, pick, between, round, pct, money, near, wordCount, parseMoney, judgeNumber, calc, ladder };
 
   // ---------------- config-bound core ----------------
   function make(C) {
     const STEPS = C.steps, POINTS = C.points || 20;
-    const seedFor = (email) => fnv1a(C.app + '|v' + C.seedVersion + '|' + normEmail(email));
+    const seedFor = (code) => fnv1a(C.app + '|v' + C.seedVersion + '|' + normCode(code));
     const checksum = (str) => { const a = fnv1a(C.salt + str), b = fnv1a(str + C.salt + 'b'); return (a.toString(36) + b.toString(36)).toUpperCase().padStart(12, '0').slice(0, 12); };
-    const buildTasks = (email) => C.buildTasks(mulberry32(seedFor(email)), h);
+    const buildTasks = (code) => C.buildTasks(mulberry32(seedFor(code)), h);
     const judgeQuiz = (qi, a) => ({ ok: a != null && Number(a) === C.quiz[qi].answer });
     const judgeNote = (t) => ({ ok: wordCount(t) >= C.note.minWords, words: wordCount(t) });
     const pointsFor = (n) => n >= STEPS.length ? POINTS : n >= STEPS.length / 2 ? POINTS / 2 : 0;
-    const canonical = (p) => JSON.stringify({ v: p.v, app: p.app, name: p.name, email: p.email, issued: p.issued, steps: p.steps, memo: p.memo });
-    function makePayload(name, email, log, memo) {
-      const p = { v: C.version, app: C.app, name: String(name || '').trim(), email: normEmail(email), issued: new Date().toISOString(),
+    const canonical = (p) => JSON.stringify({ v: p.v, id: 'code', app: p.app, code: p.code, issued: p.issued, steps: p.steps, memo: p.memo });
+    function makePayload(code, log, memo) {
+      const p = { v: C.version, id: 'code', app: C.app, code: normCode(code), issued: new Date().toISOString(),
         steps: STEPS.map((s) => { const l = log[s.id] || {}; return { id: s.id, done: !!l.done, attempts: l.attempts || 0, help: l.help || 0,
           value: l.value == null ? null : String(l.value), choice: l.choice == null ? null : String(l.choice),
           rows: Array.isArray(l.rows) ? l.rows.map((x) => (x == null ? null : String(x))) : null, at: l.at || null }; }),
@@ -145,17 +152,17 @@
     function verifyPayload(p) {
       const out = { checksumOk: false, rows: [], done: 0, total: STEPS.length, points: 0, problems: [] };
       if (!p || p.app !== C.app) { out.problems.push('This is not a receipt from ' + C.story.title + '.'); return out; }
-      if (p.v !== C.version) { out.problems.push('This receipt comes from an older version (' + p.v + '). Ask the student to download a new receipt.'); return out; }
+      if (p.v !== C.version || p.id !== 'code') { out.problems.push('This receipt comes from an older version (' + p.v + '). Ask the student to download a new receipt.'); return out; }
       out.checksumOk = checksum(canonical(p)) === p.sum;
       if (!out.checksumOk) out.problems.push('The checksum does not match, so the receipt was edited after it was issued.');
-      const tasks = buildTasks(p.email);
+      const tasks = buildTasks(p.code);
       for (const s of STEPS) {
         const e = (p.steps || []).find((x) => x.id === s.id) || {}; let ok = false;
         if (s.kind === 'walk') ok = !!e.done;
         else if (s.kind === 'check') ok = !!e.done && judgeQuiz(s.quiz, e.choice).ok;
         else if (s.kind === 'note') ok = !!e.done && judgeNote(p.memo).ok;
         else { const t = tasks.find((x) => x.id === s.id); ok = !!e.done && !!t && C.judgeTask(t, { value: e.value, choice: e.choice, rows: e.rows }, h).ok; }
-        if (e.done && !ok) out.problems.push(s.label + ' is marked complete, but its answer does not check out for this email.');
+        if (e.done && !ok) out.problems.push(s.label + ' is marked complete, but its answer does not check out for this desk code.');
         if (ok) out.done++;
         out.rows.push({ id: s.id, label: s.label, claimed: !!e.done, verified: ok, attempts: e.attempts || 0, help: e.help || 0, at: e.at });
       }
@@ -176,7 +183,6 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const KEY = C.storageKey;
   const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } } };
-  const PERSONAL = /@(gmail|yahoo|hotmail|outlook|live|icloud|me|aol|proton|protonmail|msn|ymail)\./i;
   root.Desk = D; // tests and self-checks
   const DESMOS = 'https://www.desmos.com/scientific';
   document.title = ST.title;
@@ -186,7 +192,7 @@
 <button class="btn-quiet" id="themeBtn" type="button" aria-pressed="false">Dark mode</button></div>
 <nav class="steps" aria-label="Steps"><ol id="stepNav"></ol></nav><p class="navnote" id="navnote" hidden>Move between steps at any time. Finished steps turn green.</p></header>
 <main id="main" tabindex="-1"><div id="view"></div></main>
-<footer><p>${esc(ST.kicker)}. Your progress is saved in this browser.</p></footer><div class="sr-only" aria-live="polite" id="announce"></div>`);
+<footer><p>${esc(ST.kicker)}. Your progress is saved in this browser.<span id="codeNote"></span></p></footer><div class="sr-only" aria-live="polite" id="announce"></div>`);
   const view = $('#view');
 
   // theme
@@ -211,14 +217,14 @@
   }
 
   // state
-  let S = { name: '', email: '', tasks: [], log: {}, memo: '', at: 'start' };
+  let S = { code: '', tasks: [], log: {}, memo: '', at: 'start' };
   const blankLog = () => { const l = {}; D.STEPS.forEach((s) => { l[s.id] = { done: false, attempts: 0, help: 0 }; }); return l; };
-  function saveState() { if (S.practice) return; store.set(KEY + ':' + D.seedFor(S.email), { name: S.name, email: S.email, log: S.log, memo: S.memo, at: S.at }); store.set(KEY + ':last', S.email); }
-  function startFor(name, email) {
-    S.name = name.trim(); S.email = normEmail(email); S.tasks = D.buildTasks(S.email);
-    const saved = store.get(KEY + ':' + D.seedFor(S.email));
+  function saveState() { if (S.practice) return; store.set(KEY + ':' + D.seedFor(S.code), { code: S.code, log: S.log, memo: S.memo, at: S.at }); store.set(KEY + ':last', S.code); }
+  function startFor(code) {
+    S.code = normCode(code); S.tasks = D.buildTasks(S.code);
+    const saved = store.get(KEY + ':' + D.seedFor(S.code));
     S.log = saved && saved.log ? saved.log : blankLog(); D.STEPS.forEach((s) => { if (!S.log[s.id]) S.log[s.id] = { done: false, attempts: 0, help: 0 }; });
-    S.memo = saved && saved.memo ? saved.memo : ''; if (saved && saved.name && !name.trim()) S.name = saved.name;
+    S.memo = saved && saved.memo ? saved.memo : '';
     S.at = saved && saved.at ? saved.at : D.STEPS[0].id; saveState();
   }
   const doneCount = () => D.STEPS.filter((s) => S.log[s.id] && S.log[s.id].done).length;
@@ -233,7 +239,8 @@
   // The "From <name>, <title>" line was cut 2026-11-12 (Samuel: a sender line with no story is noise); only the Done stamp remains.
   const memoHead = (done) => (done ? '<div class="memo-head"><span></span><span class="stamp">Done</span></div>' : '');
   function renderNav() {
-    const ol = $('#stepNav'); ol.innerHTML = ''; $('#navnote').hidden = !S.email; if (!S.email) return;
+    const ol = $('#stepNav'); ol.innerHTML = ''; $('#navnote').hidden = !S.code;
+    $('#codeNote').textContent = S.code ? ' To continue on another computer, use your desk code ' + fmtCode(S.code) + '.' : ''; if (!S.code) return;
     [...D.STEPS, { id: 'receipt', label: 'Receipt' }].forEach((s) => {
       const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.textContent = s.label;
       const done = s.id === 'receipt' ? doneCount() === D.STEPS.length : S.log[s.id].done;
@@ -255,7 +262,7 @@
     pg.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   }
   function go(id) {
-    if (!S.email) return showStart();
+    if (!S.code) return showStart();
     S.at = id; saveState(); const s = D.STEPS[stepIdx(id)];
     if (id === 'receipt') showReceipt(); else if (s.kind === 'walk') showWalk(s); else if (s.kind === 'check') showCheck(s); else if (s.kind === 'note') showNote(s); else showTask(s);
     renderNav(); renderPager(id); $('#main').focus({ preventScroll: true }); root.scrollTo(0, 0);
@@ -274,21 +281,23 @@
         <li>Check your answers as often as you like. If you get stuck, the help buttons show you the setup with your own numbers.</li>
         <li>The <b>Desmos calculator</b> button at the top of the page opens a calculator in a window beside the desk. Keep it open while you work.</li>
         <li>When you finish, download your receipt and upload it to the assignment page.</li></ul></div>
-      <form class="start" id="startForm" novalidate>
-        <div><label for="nm">Your full name</label><input type="text" id="nm" autocomplete="name" required value="${lastSaved ? esc(lastSaved.name) : ''}"></div>
-        <div><label for="em">Your school email</label><input type="email" id="em" autocomplete="email" required value="${lastSaved ? esc(lastSaved.email) : ''}" aria-describedby="emHelp"><p class="field-help" id="emHelp">Your instructor matches your receipt to this email.</p></div>
-        <div><label for="em2">Type your school email again</label><input type="email" id="em2" autocomplete="off" required value="${lastSaved ? esc(lastSaved.email) : ''}"></div>
-        <p class="fb bad" id="startErr" role="alert"></p>
-        <div class="actions"><button class="btn" type="submit">${lastSaved ? 'Continue where you left off' : 'Start'}</button></div></form>`;
-    let warned = false;
-    $('#startForm').addEventListener('submit', (e) => {
-      e.preventDefault(); const nm = $('#nm').value.trim(), em = $('#em').value.trim(), em2 = $('#em2').value.trim(); const err = $('#startErr'); err.className = 'fb bad';
-      if (!nm) { err.textContent = 'Enter your full name.'; $('#nm').focus(); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { err.textContent = 'Enter your school email, like jdoe@college.edu.'; $('#em').focus(); return; }
-      if (normEmail(em) !== normEmail(em2)) { err.textContent = 'The two emails do not match. Check both for typos.'; $('#em2').focus(); return; }
-      if (PERSONAL.test(em) && !warned) { warned = true; err.className = 'fb hint'; err.textContent = 'That looks like a personal email. Your instructor looks for your school email, so use that if you have one. To keep this email anyway, select Start again.'; return; }
-      startFor(nm, em); const first = D.STEPS.find((s) => !S.log[s.id].done);
-      go(lastSaved && normEmail(lastSaved.email) === S.email && S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt'));
+      <div class="start" id="startBox">
+        ${lastSaved ? `<p>Welcome back. Your desk code is <b class="code">${fmtCode(last)}</b>.</p>` : ''}
+        <div class="actions"><button class="btn" type="button" id="goBtn">${lastSaved ? 'Continue where you left off' : 'Start'}</button></div>
+        <details class="resume"><summary>Started on another computer?</summary>
+          <form id="codeForm" novalidate><label for="dc">Your desk code</label>
+          <input type="text" id="dc" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-2345" aria-describedby="dcHelp">
+          <p class="field-help" id="dcHelp">Your desk code is at the bottom of every page of the desk and on your receipt.</p>
+          <p class="fb bad" id="startErr" role="alert"></p>
+          <div class="actions"><button class="btn secondary" type="submit">Continue with this code</button></div></form></details></div>`;
+    $('#goBtn').addEventListener('click', () => {
+      startFor(lastSaved ? last : newCode()); const first = D.STEPS.find((s) => !S.log[s.id].done);
+      go(lastSaved && S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt'));
+    });
+    $('#codeForm').addEventListener('submit', (e) => {
+      e.preventDefault(); const v = $('#dc').value; const err = $('#startErr');
+      if (!validCode(v)) { err.textContent = 'A desk code is 8 letters and numbers, like ABCD-2345. Check it against your receipt.'; $('#dc').focus(); return; }
+      startFor(v); const first = D.STEPS.find((s) => !S.log[s.id].done); go(S.at && S.at !== 'start' ? S.at : (first ? first.id : 'receipt'));
     });
     renderNav();
   }
@@ -414,13 +423,12 @@
   // receipt
   function wrapLines(g, text, maxW, maxLines) { const words = String(text).replace(/\s+/g, ' ').trim().split(' '); const lines = []; let cur = ''; for (const w of words) { const t2 = cur ? cur + ' ' + w : w; if (g.measureText(t2).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t2; } if (cur) lines.push(cur); if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] += ' …'; } return lines; }
   async function makeReceiptBlob() {
-    const payload = D.makePayload(S.name, S.email, S.log, S.memo); const done = doneCount(), pts = D.pointsFor(done), n = D.STEPS.length;
+    const payload = D.makePayload(S.code, S.log, S.memo); const done = doneCount(), pts = D.pointsFor(done), n = D.STEPS.length;
     const cols = Math.min(5, Math.ceil(n / 2)), rowsN = Math.ceil(n / cols), boxW = Math.floor((1040 - (cols - 1) * 12) / cols);
     const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 1000 + rowsN * 92; const g = cv.getContext('2d'); const H = cv.height;
     g.fillStyle = '#F7F5F0'; g.fillRect(0, 0, 1200, H); g.strokeStyle = '#1C6B4A'; g.lineWidth = 6; g.strokeRect(24, 24, 1152, H - 48); g.lineWidth = 1.5; g.strokeRect(38, 38, 1124, H - 76);
     g.fillStyle = '#1C6B4A'; g.font = 'italic 24px Georgia, serif'; g.fillText(ST.company + ' ' + (ST.team || '') + '  ·  ' + ST.kicker, 80, 100);
-    g.fillStyle = '#1B211D'; g.font = '58px Georgia, serif'; g.fillText(ST.title, 80, 172); g.font = '34px Georgia, serif'; g.fillText(S.name, 80, 236);
-    g.fillStyle = '#5C625D'; g.font = '26px Georgia, serif'; g.fillText(S.email, 80, 276);
+    g.fillStyle = '#1B211D'; g.font = '58px Georgia, serif'; g.fillText(ST.title, 80, 172); g.fillStyle = '#5C625D'; g.font = '30px Georgia, serif'; g.fillText('Desk code ' + fmtCode(S.code), 80, 244);
     g.fillStyle = done === n ? '#1C6B4A' : '#8A5A00'; g.fillRect(80, 306, 1040, 96); g.fillStyle = '#FFFFFF'; g.font = 'bold 44px Georgia, serif'; g.fillText('Points: ' + pts + ' / ' + D.POINTS, 108, 370);
     g.font = '24px Georgia, serif'; g.textAlign = 'right'; g.fillText(done + ' of ' + n + ' steps complete · graded on completion', 1092, 366); g.textAlign = 'left';
     const fit = (g, txt, max, px) => { let s = px; do { g.font = 'bold ' + s + 'px Georgia, serif'; s -= 1; } while (g.measureText(txt).width > max && s >= 12); };
@@ -436,11 +444,11 @@
     return { blob: new Blob([D.addTextChunk(bytes, D.encodeReceipt(payload))], { type: 'image/png' }), url: cv.toDataURL('image/png'), payload, pts, done };
   }
   function startPractice() {
-    const k = KEY + ':practice:' + D.seedFor(S.email); const round = (Number(store.get(k)) || 0) + 1; store.set(k, round);
-    S.practice = round; S.tasks = D.buildTasks(S.email + '#practice' + round); S.log = blankLog();
+    const k = KEY + ':practice:' + D.seedFor(S.code); const round = (Number(store.get(k)) || 0) + 1; store.set(k, round);
+    S.practice = round; S.tasks = D.buildTasks(S.code + 'P' + round); S.log = blankLog();
     const first = (C.practiceStart && D.STEPS.find((s) => s.id === C.practiceStart)) || D.STEPS.find((s) => s.kind === 'task'); go(first ? first.id : D.STEPS[0].id);
   }
-  function endPractice() { const nm = S.name, em = S.email; S.practice = 0; startFor(nm, em); go('receipt'); }
+  function endPractice() { const c = S.code; S.practice = 0; startFor(c); go('receipt'); }
   function showPracticeEnd() {
     const tasks = D.STEPS.filter((s) => s.kind === 'task'), done = tasks.filter((s) => S.log[s.id].done).length;
     view.innerHTML = `${practiceBanner()}<p class="kicker">Practice round ${S.practice}</p><h2>You solved ${done} of ${tasks.length} problems with new numbers.</h2>
@@ -450,23 +458,22 @@
   }
   async function showReceipt() {
     if (S.practice) return showPracticeEnd();
-    const r = await makeReceiptBlob(); const all = r.done === D.STEPS.length; const fileName = C.filePrefix + '_' + (S.name.replace(/[^A-Za-z0-9]+/g, '') || 'Student') + '.png';
+    const r = await makeReceiptBlob(); const all = r.done === D.STEPS.length; const fileName = C.filePrefix + '_' + fmtCode(S.code) + '.png';
     view.innerHTML = `<p class="kicker">Your receipt</p><p class="points">${r.pts} / ${D.POINTS} points</p><h2>${all ? 'Every step is complete.' : 'A few steps are still open.'}</h2>
       <p>${all ? 'Download your receipt and upload it to the assignment page. That is all there is to it.' : 'This assignment is graded on completion. Finish the open steps below for full credit, then download your receipt.'}</p>
       <ul class="check">${D.STEPS.map((s) => `<li><span class="st ${S.log[s.id].done ? 'ok' : 'no'}">${S.log[s.id].done ? '✓ done' : '✗ open'}</span><span>${esc(s.label)}</span>${S.log[s.id].done ? '' : ` <button class="btn small secondary" type="button" data-go="${s.id}">Go to ${esc(s.label)}</button>`}</li>`).join('')}</ul>
       <div class="actions"><a class="btn" id="dl" download="${fileName}" href="#">Download your receipt</a></div>
-      <img class="cert-preview" alt="Receipt preview: ${esc(S.name)}, ${r.pts} of ${D.POINTS} points, ${r.done} of ${D.STEPS.length} steps complete, verification code ${D.shortCode(r.payload.sum)}." src="${r.url}">
+      <img class="cert-preview" alt="Receipt preview: desk code ${fmtCode(S.code)}, ${r.pts} of ${D.POINTS} points, ${r.done} of ${D.STEPS.length} steps complete, verification code ${D.shortCode(r.payload.sum)}." src="${r.url}">
       <p class="small">The file is named ${esc(fileName)}. Upload the downloaded file itself, not a screenshot: your instructor’s checker reads data stored inside the file. If you finish more steps later, download a new receipt.</p>
       <div class="box"><p><b>Want more practice before an exam?</b> Work the problems again with new numbers. Practice rounds are not graded and do not change this receipt.</p><div class="actions"><button class="btn secondary" type="button" id="practice">Practice with new numbers</button></div></div>
-      <p class="small">Not you? <a href="#" id="switch">Start over with a different email</a>.</p>`;
+      <p class="small">Your desk code is <b class="code">${fmtCode(S.code)}</b>. Use it to continue on another computer.</p>`;
     $('#practice').addEventListener('click', startPractice);
     $('#dl').href = URL.createObjectURL(r.blob); $$('button[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
-    $('#switch').addEventListener('click', (e) => { e.preventDefault(); S = { name: '', email: '', tasks: [], log: {}, memo: '', at: 'start' }; store.set(KEY + ':last', null); showStart(); });
   }
 
   // boot
   const last = store.get(KEY + ':last'); const lastSaved = last ? store.get(KEY + ':' + D.seedFor(last)) : null;
-  if (lastSaved && lastSaved.name) { startFor(lastSaved.name, lastSaved.email); go(S.at && S.at !== 'start' ? S.at : D.STEPS[0].id); } else showStart();
+  if (lastSaved && lastSaved.code) { startFor(lastSaved.code); go(S.at && S.at !== 'start' ? S.at : D.STEPS[0].id); } else showStart();
 
   // self-checks (interactive-health contract)
   const checks = [];

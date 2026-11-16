@@ -42,6 +42,10 @@ h3{font:700 18px var(--serif);margin:1.2rem 0 .3rem}
 .box{background:var(--panel);border-radius:8px;padding:1rem 1.25rem;margin:0 0 1.4rem}
 .box p{margin:.3rem 0}.box ul{margin:.3rem 0;padding-left:1.2rem}.box li{margin:.25rem 0}
 form.start{display:grid;gap:1rem;max-width:30rem}
+.start{display:grid;gap:1rem;max-width:30rem}
+.resume summary{cursor:pointer;color:var(--muted)}
+.resume form{display:grid;gap:.6rem;margin-top:.8rem}
+.code{font-family:var(--mono);letter-spacing:.06em}
 label{display:block;font-weight:700;font-size:16px;margin-bottom:.25rem}
 .field-help{font-size:15px;color:var(--muted);margin:.25rem 0 0}
 input[type=text],input[type=email],textarea{width:100%;font:18px var(--serif);padding:.55rem .7rem;border:1.5px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)}
