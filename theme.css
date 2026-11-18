@@ -1,0 +1,67 @@
+/* The Site Selection Desk theme (FINAN IV Unit 5), 2026-11-18. Loaded after desk.css; changes the look only.
+   A site plan on the real-estate table: cerulean drafting ink on white plan paper with registration crosses, red
+   map pins for the sites, condensed title-block lettering, a dimension line under the desk name, the memo as a
+   plan sheet on a stack. Dark mode is the blueprint. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+:root{
+  --bg:#F4F7F9;--surface:#FFFFFF;--panel:#E5EDF2;--line:#C4D4DF;--line-strong:#577284;
+  --ink:#10283A;--muted:#425D6E;--brand:#0A5F94;--brand-ink:#FFFFFF;--brand-tint:#DCECF6;
+  --ok:#1D6B43;--ok-tint:#DFF1E6;--bad:#B0241B;--bad-tint:#FBE5E2;--hint:#2B5570;--hint-tint:#E1EDF4;--focus:#10283A;--hl:#FFEFBF;
+  --pin:#C8283A;
+  --receipt-frame:#0A5F94;--receipt-paper:#F8FBFD;
+  --serif:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;--display:'Barlow Condensed','Arial Narrow',sans-serif;}
+:root[data-theme="dark"]{
+  --bg:#0C3456;--surface:#103F68;--panel:#154A76;--line:#2C6390;--line-strong:#9FC4E2;
+  --ink:#F2F8FD;--muted:#C2DAEC;--brand:#E6F3FF;--brand-ink:#0C3456;--brand-tint:#1A5482;
+  --ok:#93E3AC;--ok-tint:#123F33;--bad:#FFB0A9;--bad-tint:#4A2834;--hint:#D2E6F7;--hint-tint:#174C78;--focus:#FFD166;--hl:#5C4C1B;
+  --pin:#FF8A93;}
+
+/* plan paper: a registration cross every 48px (light) or blueprint white (dark) */
+body{font-size:17.5px;background-color:var(--bg);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cpath d='M24 19v10M19 24h10' stroke='%230A5F94' stroke-opacity='.2' stroke-width='1'/%3E%3C/svg%3E");
+  display:flex;flex-direction:column;min-height:100vh}
+:root[data-theme="dark"] body{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cpath d='M24 19v10M19 24h10' stroke='%23E6F3FF' stroke-opacity='.16' stroke-width='1'/%3E%3C/svg%3E")}
+header.bar{order:-2;background:var(--bg);border-bottom:1.5px solid var(--brand);box-shadow:0 4px 0 -2.5px var(--brand)}
+.brand{font-style:normal}
+.brand b{font:700 20px var(--display);letter-spacing:.02em}
+
+/* header art: only on the first screen */
+.desk-art{order:-1;display:none;width:calc(100% - 2.2rem);max-width:calc(820px - 2.2rem);height:auto;margin:1.8rem auto 0;border:1.5px solid var(--brand);outline:1px solid var(--line);outline-offset:5px}
+body:has(#startBox) .desk-art{display:block}
+@media (max-width:600px){.desk-art{aspect-ratio:2.2/1;object-fit:cover;object-position:100% 50%}}
+
+/* steps as lots on the plan; a finished one is built */
+nav.steps{padding-top:.6rem}
+nav.steps button{border-radius:0;font:600 14px var(--serif);border:1.5px solid var(--line-strong);padding:.22rem .7rem}
+nav.steps button.done::before{content:"\2713\00a0";content:"\2713\00a0" / "done: "}
+nav.steps button[aria-current="step"]{outline:2.5px solid var(--pin);outline-offset:2px}
+
+/* type: title-block lettering with a dimension line under the desk name */
+h1{font:700 clamp(44px,7.6vw,72px)/.95 var(--display);color:var(--brand);letter-spacing:.005em}
+h1::after{content:"";display:block;height:11px;max-width:21rem;margin-top:.8rem;
+  background:linear-gradient(var(--pin),var(--pin)) left center/100% 1.5px no-repeat,linear-gradient(var(--pin),var(--pin)) left top/1.5px 100% no-repeat,linear-gradient(var(--pin),var(--pin)) right top/1.5px 100% no-repeat}
+h2{font:700 32px/1.05 var(--display);letter-spacing:.005em}
+.kicker{font-style:normal;font:600 18px var(--display);letter-spacing:.03em;color:var(--muted)}
+.dek{font-size:18.5px;font-style:normal;color:var(--ink);max-width:36em}
+.points{font:700 56px/1 var(--display);color:var(--brand)}
+
+/* cards: the memo is a plan sheet on a stack; the box is the title block */
+.box{border-radius:0;border:1.5px solid var(--line-strong);background:var(--surface)}
+.memo{border-radius:0;border:1.5px solid var(--brand);box-shadow:5px 5px 0 -1.5px var(--surface),5px 5px 0 0 var(--brand)}
+.memo-head{border-bottom:1.5px solid var(--brand)}
+.stamp{border-radius:0;color:var(--pin);border-color:var(--pin)}
+.btn,.btn-calc,.btn-quiet{border-radius:2px}
+.btn{font-weight:700}
+.choice span{border-radius:2px}
+input[type=text],input[type=email],textarea,input.money,table.cf input{border-radius:0}
+
+/* tables: drafting lines, a dashed construction line between rows */
+table.cf th{font:600 16px var(--display);letter-spacing:.02em;color:var(--brand);border-bottom:2px solid var(--brand)}
+table.cf caption{font-style:normal;font-weight:600}
+table.cf td{border-bottom:1px dashed var(--line-strong)}
+table.cf td.lbl{font-family:var(--serif)}
+table.cf tfoot tr.total td{border-top:2px solid var(--ink);border-bottom:0}
+.formula{border-radius:0;border-left:4px solid var(--brand)}
+.calc-strip{border-left-color:var(--line-strong);border-radius:0}
+details.example{border-left-color:var(--brand);border-radius:0}
+@media (max-width:680px){table.cf th{font-size:14px}}

@@ -190,7 +190,7 @@
 <header class="bar"><div class="bar-in"><div class="brand"><b>${esc(ST.company)}</b> ${esc(ST.team || '')}</div>
 <a class="btn-calc desmos-open" id="calcBtn" href="${DESMOS}" target="desmos" rel="noopener">Desmos calculator<span class="sr-only"> (opens in a new window)</span></a>
 <button class="btn-quiet" id="themeBtn" type="button" aria-pressed="false">Dark mode</button></div>
-<nav class="steps" aria-label="Steps"><ol id="stepNav"></ol></nav><p class="navnote" id="navnote" hidden>Move between steps at any time. Finished steps turn green.</p></header>
+<nav class="steps" aria-label="Steps"><ol id="stepNav"></ol></nav><p class="navnote" id="navnote" hidden>Move between steps at any time. Finished steps are filled in.</p></header>
 <main id="main" tabindex="-1"><div id="view"></div></main>
 <footer><p>${esc(ST.kicker)}. Your progress is saved in this browser.<span id="codeNote"></span></p></footer><div class="sr-only" aria-live="polite" id="announce"></div>`);
   const view = $('#view');
@@ -261,9 +261,12 @@
       + (next ? `<button type="button" class="btn" data-go="${next.id}">Next: ${esc(next.label)} →</button>` : '');
     pg.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   }
+  // Usage counter (rize-usage.js, optional): page-level moments only, never the code or an answer.
+  const usage = (ev, d) => { try { if (root.rizeUsage && !S.practice) root.rizeUsage.mark(ev, d); } catch (e) { /* never break the desk */ } };
   function go(id) {
     if (!S.code) return showStart();
     S.at = id; saveState(); const s = D.STEPS[stepIdx(id)];
+    usage('step', id === 'receipt' ? 'receipt' : stepIdx(id) + 1);
     if (id === 'receipt') showReceipt(); else if (s.kind === 'walk') showWalk(s); else if (s.kind === 'check') showCheck(s); else if (s.kind === 'note') showNote(s); else showTask(s);
     renderNav(); renderPager(id); $('#main').focus({ preventScroll: true }); root.scrollTo(0, 0);
   }
@@ -426,10 +429,15 @@
     const payload = D.makePayload(S.code, S.log, S.memo); const done = doneCount(), pts = D.pointsFor(done), n = D.STEPS.length;
     const cols = Math.min(5, Math.ceil(n / 2)), rowsN = Math.ceil(n / cols), boxW = Math.floor((1040 - (cols - 1) * 12) / cols);
     const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 1000 + rowsN * 92; const g = cv.getContext('2d'); const H = cv.height;
-    g.fillStyle = '#F7F5F0'; g.fillRect(0, 0, 1200, H); g.strokeStyle = '#1C6B4A'; g.lineWidth = 6; g.strokeRect(24, 24, 1152, H - 48); g.lineWidth = 1.5; g.strokeRect(38, 38, 1124, H - 76);
-    g.fillStyle = '#1C6B4A'; g.font = 'italic 24px Georgia, serif'; g.fillText(ST.company + ' ' + (ST.team || '') + '  ·  ' + ST.kicker, 80, 100);
+    // Frame and paper come from the theme (--receipt-frame, --receipt-paper on :root), read at render time; an unset or
+    // unreadable value falls back to the default green on cream. Colors are decoration only: verify.html reads the data chunk.
+    const themeCol = (name, dflt) => { let v = ''; try { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch (e) { v = ''; }
+      g.fillStyle = dflt; if (v) g.fillStyle = v; const out = g.fillStyle; g.fillStyle = dflt; return out; };
+    const FRAME = themeCol('--receipt-frame', '#1C6B4A'), PAPER = themeCol('--receipt-paper', '#F7F5F0');
+    g.fillStyle = PAPER; g.fillRect(0, 0, 1200, H); g.strokeStyle = FRAME; g.lineWidth = 6; g.strokeRect(24, 24, 1152, H - 48); g.lineWidth = 1.5; g.strokeRect(38, 38, 1124, H - 76);
+    g.fillStyle = FRAME; g.font = 'italic 24px Georgia, serif'; g.fillText(ST.company + ' ' + (ST.team || '') + '  ·  ' + ST.kicker, 80, 100);
     g.fillStyle = '#1B211D'; g.font = '58px Georgia, serif'; g.fillText(ST.title, 80, 172); g.fillStyle = '#5C625D'; g.font = '30px Georgia, serif'; g.fillText('Desk code ' + fmtCode(S.code), 80, 244);
-    g.fillStyle = done === n ? '#1C6B4A' : '#8A5A00'; g.fillRect(80, 306, 1040, 96); g.fillStyle = '#FFFFFF'; g.font = 'bold 44px Georgia, serif'; g.fillText('Points: ' + pts + ' / ' + D.POINTS, 108, 370);
+    g.fillStyle = done === n ? FRAME : '#8A5A00'; g.fillRect(80, 306, 1040, 96); g.fillStyle = '#FFFFFF'; g.font = 'bold 44px Georgia, serif'; g.fillText('Points: ' + pts + ' / ' + D.POINTS, 108, 370);
     g.font = '24px Georgia, serif'; g.textAlign = 'right'; g.fillText(done + ' of ' + n + ' steps complete · graded on completion', 1092, 366); g.textAlign = 'left';
     const fit = (g, txt, max, px) => { let s = px; do { g.font = 'bold ' + s + 'px Georgia, serif'; s -= 1; } while (g.measureText(txt).width > max && s >= 12); };
     D.STEPS.forEach((s, k) => { const x = 80 + (k % cols) * (boxW + 12), y = 430 + Math.floor(k / cols) * 92, l = S.log[s.id];
@@ -468,7 +476,8 @@
       <div class="box"><p><b>Want more practice before an exam?</b> Work the problems again with new numbers. Practice rounds are not graded and do not change this receipt.</p><div class="actions"><button class="btn secondary" type="button" id="practice">Practice with new numbers</button></div></div>
       <p class="small">Your desk code is <b class="code">${fmtCode(S.code)}</b>. Use it to continue on another computer.</p>`;
     $('#practice').addEventListener('click', startPractice);
-    $('#dl').href = URL.createObjectURL(r.blob); $$('button[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+    $('#dl').href = URL.createObjectURL(r.blob); $('#dl').addEventListener('click', () => usage('download', 'receipt'));
+    if (all) usage('finish'); $$('button[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
   }
 
   // boot
